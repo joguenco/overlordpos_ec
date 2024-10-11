@@ -1,0 +1,35 @@
+{
+  "m_sTicket": "8c5bfd03-f4f8-4a3f-b216-57f194e1cda6",
+  "m_iLine": 0,
+  "multiply": 1.0,
+  "price": 8.333333333333334,
+  "tax":
+  {
+    "id": "001",
+    "name": "Tax Standard",
+    "taxcategoryid": "001",
+    "rate": 0.2,
+    "cascade": false
+  },
+  "attributes":
+  {
+    "product.printer": "1",
+    "product.warranty": "false",
+    "product.reference": "123",
+    "product.com": "false",
+    "product.verpatrib": "false",
+    "ticket.updated": "true",
+    "product.name": "Burger",
+    "product.service": "false",
+    "product.categoryid": "000",
+    "product.taxcategoryid": "001",
+    "product.memodate": "1900-01-01 00:00:01",
+    "product.code": "123",
+    "product.vprice": "false",
+    "product.texttip": "",
+    "product.constant": "false"
+  },
+  "productid": "fc33fa54-3af1-486b-85e7-9838160053ea",
+  "updated": false,
+  "newprice": 10.0
+}

@@ -1,0 +1,104 @@
+//    uniCenta oPOS - Touch friendly Point Of Sale
+//    Copyright (c) 2009-2018 uniCenta & previous Openbravo POS works
+//    https://unicenta.com
+//
+//    This file is part of uniCenta oPOS
+//
+//    uniCenta oPOS is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    uniCenta oPOS is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with uniCenta oPOS.  If not, see <http://www.gnu.org/licenses/>.
+
+
+report = new com.unicenta.pos.reports.PanelReportBean();
+
+report.setTitleKey("Menu.Top10Sales");
+report.setReport("/com/unicenta/reports/sales_chart_top10");
+report.setResourceBundle("com/unicenta/reports/sales_messages");
+
+String maria = "SELECT \n" +
+    "    products.NAME,\n" +
+    "    SUM(ticketlines.UNITS) AS UNITS, \n" +
+    "    products.PRICEBUY,\n" +
+    "    products.PRICESELL, \n" +
+    "    SUM(ticketlines.PRICE * ticketlines.UNITS) AS SUBTOTAL, \n" +
+    "    SUM((ticketlines.PRICE * ticketlines.UNITS) * taxes.RATE) AS TAXES,\n" +
+    "    SUM(ticketlines.PRICE * ticketlines.UNITS) + SUM((ticketlines.PRICE * ticketlines.UNITS) * taxes.RATE) AS GROSSTOTAL\n" +
+    "FROM \n" +
+    "    ticketlines\n" +
+    "    LEFT JOIN products ON ticketlines.PRODUCT = products.ID \n" +
+    "    LEFT JOIN tickets ON tickets.ID = ticketlines.TICKET\n" +
+    "    LEFT JOIN receipts ON receipts.ID = tickets.ID\n" +
+    "    LEFT JOIN taxes ON ticketlines.TAXID = taxes.ID\n" +
+    "WHERE \n" +
+    "    tickets.ID = ticketlines.TICKET\n" +
+    "    AND ticketlines.PRODUCT = products.ID \n" +
+    "    AND ticketlines.TAXID = taxes.ID\n" +
+    "    AND ?(QBF_FILTER) " +
+    "GROUP BY \n" +
+    "    products.NAME,\n" +
+    "    products.PRICEBUY,\n" +
+    "    products.PRICESELL\n" +
+    "ORDER BY \n" +
+    "    GROSSTOTAL DESC \n" +
+    "LIMIT 10";
+
+String derby = "SELECT \n" +
+    "    products.NAME,\n" +
+    "    SUM(ticketlines.UNITS) AS UNITS, \n" +
+    "    products.PRICEBUY,\n" +
+    "    products.PRICESELL, \n" +
+    "    SUM(ticketlines.PRICE * ticketlines.UNITS) AS SUBTOTAL, \n" +
+    "    SUM((ticketlines.PRICE * ticketlines.UNITS) * taxes.RATE) AS TAXES,\n" +
+    "    SUM(ticketlines.PRICE * ticketlines.UNITS) + SUM((ticketlines.PRICE * ticketlines.UNITS) * taxes.RATE) AS GROSSTOTAL\n" +
+    "FROM \n" +
+    "    ticketlines\n" +
+    "    LEFT JOIN products ON ticketlines.PRODUCT = products.ID \n" +
+    "    LEFT JOIN tickets ON tickets.ID = ticketlines.TICKET\n" +
+    "    LEFT JOIN receipts ON receipts.ID = tickets.ID\n" +
+    "    LEFT JOIN taxes ON ticketlines.TAXID = taxes.ID\n" +
+    "WHERE \n" +
+    "    tickets.ID = ticketlines.TICKET\n" +
+    "    AND ticketlines.PRODUCT = products.ID \n" +
+    "    AND ticketlines.TAXID = taxes.ID\n" +
+    "    AND ?(QBF_FILTER) " +
+    "GROUP BY \n" +
+    "    products.NAME,\n" +
+    "    products.PRICEBUY,\n" +
+    "    products.PRICESELL\n" +
+    "ORDER BY \n" +
+    "    GROSSTOTAL DESC \n" +
+    "FETCH FIRST 10 ROWS ONLY";
+
+if (report.getDBType() == "derby") {
+report.setSentence(derby);
+} else {
+report.setSentence(maria);
+}
+report.addParameter("receipts.DATENEW");
+report.addParameter("receipts.DATENEW");
+
+paramdates = new com.unicenta.pos.reports.JParamsDatesInterval();
+
+paramdates.setStartDate(com.unicenta.beans.DateUtils.getToday());
+// JG - 8 Jan 14 paramdates.setEndDate(com.unicenta.beans.DateUtils.getToday());
+paramdates.setEndDate(com.unicenta.beans.DateUtils.getTodayMinutes());
+
+report.addQBFFilter(paramdates);
+
+report.addField("NAME", com.unicenta.data.loader.Datas.STRING);
+report.addField("UNITS", com.unicenta.data.loader.Datas.DOUBLE);
+report.addField("PRICEBUY", com.unicenta.data.loader.Datas.DOUBLE);
+report.addField("PRICESELL", com.unicenta.data.loader.Datas.DOUBLE);
+report.addField("SUBTOTAL", com.unicenta.data.loader.Datas.DOUBLE);
+report.addField("TAXES", com.unicenta.data.loader.Datas.DOUBLE);
+report.addField("GROSSTOTAL", com.unicenta.data.loader.Datas.DOUBLE);
+report;

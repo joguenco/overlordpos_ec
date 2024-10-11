@@ -1,0 +1,23 @@
+{
+  "m_sTicket": "5ff16e4c-0df9-4002-bc54-cc60fce92de2",
+  "m_iLine": 0,
+  "multiply": 1.0,
+  "price": 7.333333333333334,
+  "tax":
+  {
+    "id": "001",
+    "name": "Tax Standard",
+    "taxcategoryid": "001",
+    "rate": 0.2,
+    "cascade": false
+  },
+  "attributes":
+  {
+    "product.taxcategoryid": "001",
+    "product.printer": "1",
+    "product.name": "Burger - Item Discount @  12%"
+  },
+  "productid": "fc33fa54-3af1-486b-85e7-9838160053ea",
+  "updated": false,
+  "newprice": 0.0
+}
