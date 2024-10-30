@@ -949,7 +949,7 @@ public class JPanelConfigDatabase extends javax.swing.JPanel implements PanelCon
             multiDBPanel.setVisible(false);
         }
         else if ("MariaDB".equals(jcboDBDriver.getSelectedItem())) {
-            dbDriverLibraryValue.setText(new File(new File(dirname), "mariadb-java-client-3.4.1.jar").getAbsolutePath());
+            dbDriverLibraryValue.setText(new File(new File(dirname), "mariadb-java-client-3.5.0.jar").getAbsolutePath());
             dbDriverClassValue.setText("org.mariadb.jdbc.Driver");
             dbURLValue.setText("jdbc:mariadb://localhost:3306/");
             jtxtDbSchema.setText("unicentaopos");
@@ -960,7 +960,7 @@ public class JPanelConfigDatabase extends javax.swing.JPanel implements PanelCon
             dbMessageLabel.setForeground(new java.awt.Color(51, 204, 255));
 
         } else {
-            dbDriverLibraryValue.setText(new File(new File(dirname), "mysql-connector-j-9.0.0.jar").getAbsolutePath());
+            dbDriverLibraryValue.setText(new File(new File(dirname), "mysql-connector-j-9.1.0.jar").getAbsolutePath());
             dbDriverClassValue.setText("com.mysql.jdbc.Driver");
             dbURLValue.setText("jdbc:mysql://localhost:3306/");
             jtxtDbSchema.setText("unicentaopos");

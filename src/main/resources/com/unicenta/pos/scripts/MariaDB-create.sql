@@ -169,6 +169,7 @@ CREATE TABLE `customers` (
 	`isvip` bit(1) NOT NULL default b'0',
 	`discount` double default '0',
 	`memodate` datetime default '2000-01-01 00:00:01',
+        `taxid_type` varchar(90) not null,
 	KEY `customers_card_inx` ( `card` ),
 	KEY `customers_name_inx` ( `name` ),
 	UNIQUE INDEX `customers_skey_inx` ( `searchkey` ),
@@ -336,7 +337,7 @@ CREATE TABLE `products` (
 	`stockunits` double NOT NULL default '0',
 	`printto` varchar(255) default '1',
 	`supplier` varchar(255) default NULL,
-    `uom` varchar(255) default '0',
+        `uom` varchar(255) default '0',
 	`memodate` datetime default '2018-01-01 00:00:01',
 
 	PRIMARY KEY  ( `id` ),
@@ -559,6 +560,8 @@ CREATE TABLE `taxes` (
 	`rate` double NOT NULL default '0',
 	`ratecascade` bit(1) NOT NULL default b'0',
 	`rateorder` int(11) default NULL,
+        `legalcode` varchar(6) default '0' NOT NULL,
+        `datestart` datetime DEFAULT NULL,
 	PRIMARY KEY  ( `id` ),
 	KEY `taxes_cat_fk` ( `category` ),
 	KEY `taxes_custcat_fk` ( `custcategory` ),
@@ -629,15 +632,26 @@ CREATE TABLE `tickets` (
 	`person` varchar(255) NOT NULL,
 	`customer` varchar(255) default NULL,
 	`status` int(11) NOT NULL default '0',
+        `serie_number` varchar(100),
+	`code` varchar(10),
+        `access_key` varchar(180),
+	`tickets_id` varchar(255) null comment 'Property for the recursive relation, the purpose is for the refund, is for to save the original ticket',
 	PRIMARY KEY  ( `id` ),
 	KEY `tickets_customers_fk` ( `customer` ),
 	KEY `tickets_fk_2` ( `person` ),
-	KEY `tickets_ticketid` ( `tickettype`, `ticketid` )
+	KEY `tickets_ticketid` ( `tickettype`, `ticketid` ),
+        KEY `tickets_tickets_fk` ( `tickets_id` )
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8;
 
 /* Header line. Object: ticketsnum. Script date: 23/01/2018 08:00:00 */
 CREATE TABLE `ticketsnum` (
-	`id` int(11) NOT NULL
+    `code`      varchar(10) not null,
+    `people_id` varchar(255) not null,
+    `serie`     varchar(100) not null,
+    `id`        int(11) NOT NULL,    
+    `priority`  varchar(20) not null,
+    `status`    varchar(10) not null,
+    primary key (`code`, `people_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
 
 /* Header line. Object: ticketsnum_payment. Script date: 23/01/2018 08:00:00 */
@@ -647,8 +661,15 @@ CREATE TABLE `ticketsnum_payment` (
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
 
 /* Header line. Object: ticketsnum_refund. Script date: 23/01/2018 08:00:00 */
+
 CREATE TABLE `ticketsnum_refund` (
-	`id` int(11) NOT NULL
+    `code`      varchar(10) not null,
+    `people_id` varchar(255) not null,
+    `serie`     varchar(100) not null,
+    `id` int(11) NOT NULL,
+    `priority`  varchar(20) not null,
+    `status`    varchar(10) not null,
+    primary key (`code`, `people_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
 
 /* Header line. Object: uom. Script date: 23/01/2018 08:00:00 */
@@ -666,6 +687,44 @@ CREATE TABLE `vouchers` (
    `amount` DOUBLE DEFAULT NULL,
    `status` CHAR(1) DEFAULT 'A',
   PRIMARY KEY ( `id` )
+) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
+
+CREATE TABLE `identification_type` (
+    `code`          VARCHAR(90) not null,
+    `name`          VARCHAR(100) not null,
+    `legal_code`    VARCHAR(100) null,
+    `status`        BOOLEAN not null default true,
+    primary key (`code`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
+
+CREATE TABLE `taxpayer` (
+    `id`                int(11) not null,
+    `identification`    varchar(50) not null,
+    `legal_name`        varchar(500) not null,
+    `forced_accounting` varchar(5) not null,
+    `special_taxpayer`  varchar(50),
+    `retention_agent`   varchar(50),
+    `other`             varchar(100),
+    primary key (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
+
+CREATE TABLE `establishments` (
+    `id` varchar(11) not null,
+    `comercial_name` varchar(500),
+    `city` varchar(200) not null,
+    `address` varchar(500) not null,
+    `phone` varchar(500) not null,
+    `email` varchar(500) not null,
+    `principal` varchar(50) not null,    
+    `status` boolean not null,
+    primary key (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
+
+CREATE TABLE `holidays` (
+	`id` INT auto_increment NOT NULL,
+	`name` varchar(180) NOT NULL,
+	`date` DATE NOT NULL,
+	PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
 
 -- Update foreign keys of attributeinstance
@@ -823,6 +882,21 @@ ALTER TABLE `tickets` ADD CONSTRAINT `tickets_fk_2`
 ALTER TABLE `tickets` ADD CONSTRAINT `tickets_fk_id`
 	FOREIGN KEY ( `id` ) REFERENCES `receipts` ( `id` );
 
+ALTER TABLE `tickets`
+ADD INDEX `idx_document` (`code`, `serie_number` desc) ;
+
+-- Update foreign keys of customer to identification_type
+ALTER TABLE `customers` 
+ADD CONSTRAINT `taxid_type`
+  FOREIGN KEY (`taxid_type`)
+  REFERENCES `identification_type` (`code`);
+
+alter table `ticketsnum` add constraint `ticketsnum_people_fk`
+    foreign key ( `people_id` ) references `people` ( `id` );
+
+alter table `tickets` add constraint `tickets_tickets_fk`
+    foreign key ( `tickets_id` ) references `tickets` ( `id` );
+ 
 -- *****************************************************************************
 
 -- ADD roles
@@ -918,30 +992,70 @@ INSERT INTO resources(id, name, restype, content) VALUES('72', 'script.SendOrder
 INSERT INTO resources(id, name, restype, content) VALUES('73', 'script.Totaldiscount', 0, $FILE{/com/unicenta/pos/templates/script.Totaldiscount.txt});
 INSERT INTO resources(id, name, restype, content) VALUES('74', 'script.multibuy', 0, $FILE{/com/unicenta/pos/templates/script.multibuy.txt});
 
+-- Customer default
+INSERT INTO resources(id, name, restype, content) VALUES('90', 'Customer.Default', 0, $FILE{/com/unicenta/pos/templates/Customer.Default.txt});
+
+-- Customer default
+INSERT INTO resources(id, name, restype, content) VALUES('91', 'FormatTicket.NumberDigits', 0, $FILE{/com/unicenta/pos/templates/FormatTicket.NumberDigits.txt});
+
+-- ADD Ambiente de facturación electrónica: Test -> 1; Production -> 2
+INSERT INTO resources(id, name, restype, content) VALUES('92', 'Electronic.Environment', 0, $FILE{/com/unicenta/pos/templates/Electronic.Environment.txt});
+
+-- Tax category for holidays
+INSERT INTO resources(id, name, restype, content) VALUES('93', 'Tax.Holidays', 0, $FILE{/com/unicenta/pos/templates/Tax.Holidays.txt});
+INSERT INTO resources(id, name, restype, content) VALUES('94', 'Tax.Normal.Days', 0, $FILE{/com/unicenta/pos/templates/Tax.Normal.Days.txt});
+
 -- ADD CATEGORIES
 INSERT INTO categories(id, name) VALUES ('000', 'Category Standard');
+INSERT INTO categories(id, name) VALUES ('001', 'Category Ecuador');
 
 -- ADD TAXCATEGORIES
 /* 002 added 31/01/2017 00:00:00. */
-INSERT INTO taxcategories(id, name) VALUES ('000', 'Tax Exempt');
-INSERT INTO taxcategories(id, name) VALUES ('001', 'Tax Standard');
-INSERT INTO taxcategories(id, name) VALUES ('002', 'Tax Other');
+INSERT INTO taxcategories(id, name) VALUES ('000', 'IVA 0');
+INSERT INTO taxcategories(id, name) VALUES ('012', 'IVA 12');
+INSERT INTO taxcategories(id, name) VALUES ('008', 'IVA 8');
+INSERT INTO taxcategories(id, name) VALUES ('015', 'IVA 15');
+INSERT INTO taxcategories(id, name) VALUES ('013', 'IVA 13');
+INSERT INTO taxcategories(id, name) VALUES ('005', 'IVA 5');
 
 -- ADD TAXES
 /* 002 added 31/01/2017 00:00:00. */
-INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder) VALUES ('000', 'Tax Exempt', '000', NULL, NULL, 0, FALSE, NULL);
-INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder) VALUES ('001', 'Tax Standard', '001', NULL, NULL, 0.20, FALSE, NULL);
-INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder) VALUES ('002', 'Tax Other', '002', NULL, NULL, 0, FALSE, NULL);
+INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder, legalcode) VALUES ('000', 'IVA 0', '000', NULL, NULL, 0, FALSE, NULL, '0');
+INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder, legalcode) VALUES ('012', 'IVA 12', '012', NULL, NULL, 0.12, FALSE, NULL, '2');
+INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder, legalcode) VALUES ('008', 'IVA 8', '008', NULL, NULL, 0.08, FALSE, NULL, '8');
+INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder, legalcode) VALUES ('015', 'IVA 15', '015', NULL, NULL, 0.15, FALSE, NULL, '4');
+INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder, legalcode) VALUES ('013', 'IVA 13', '013', NULL, NULL, 0.13, FALSE, NULL, '10');
+INSERT INTO taxes(id, name, category, custcategory, parentid, rate, ratecascade, rateorder, legalcode) VALUES ('005', 'IVA 5', '005', NULL, NULL, 0.05, FALSE, NULL, '5');
 
 -- ADD PRODUCTS
 INSERT INTO products(id, reference, code, name, category, taxcat, isservice, display, printto) 
-VALUES ('xxx999_999xxx_x9x9x9', 'xxx999', 'xxx999', 'Free Line entry', '000', '001', 1, '<html><center>Free Line entry', '1');
+VALUES ('xxx999_999xxx_x9x9x9', 'xxx999', 'xxx999', 'Free Line entry', '000', '000', 1, '<html><center>Free Line entry', '1');
 INSERT INTO products(id, reference, code, name, category, taxcat, isservice, display, printto) 
-VALUES ('xxx998_998xxx_x8x8x8', 'xxx998', 'xxx998', 'Service Charge', '000', '001', 1, '<html><center>Service Charge', '1');
+VALUES ('xxx998_998xxx_x8x8x8', 'xxx998', 'xxx998', 'Service Charge', '000', '000', 1, '<html><center>Service Charge', '1');
 
 -- ADD PRODUCTS_CAT
 INSERT INTO products_cat(product) VALUES ('xxx999_999xxx_x9x9x9');
 INSERT INTO products_cat(product) VALUES ('xxx998_998xxx_x8x8x8');
+
+-- ADD PRODUCTS Ecuador
+INSERT INTO products(id, reference, code, name, pricesell, category, taxcat, isservice, display, printto, uom) 
+VALUES ('1', '1', '1', 'Producto 0%', 1, '001', '000', 0, '<html><center>Producto 0%', '1', 'u');
+-- INSERT INTO products(id, reference, code, name, pricesell, category, taxcat, isservice, display, printto, uom) 
+-- VALUES ('2', '2', '2', 'Producto 12%', 1, '001', '012', 0, '<html><center>Producto 12%', '1', 'u');
+-- INSERT INTO products(id, reference, code, name, pricesell, category, taxcat, isservice, display, printto, uom) 
+-- VALUES ('3', '3', '3', 'Producto 13%', 1, '001', '013', 0, '<html><center>Producto 13%', '1', 'u');
+INSERT INTO products(id, reference, code, name, pricesell, category, taxcat, isservice, display, printto, uom) 
+VALUES ('4', '4', '4', 'Producto 15%', 1, '001', '015', 0, '<html><center>Producto 15%', '1', 'u');
+INSERT INTO products(id, reference, code, name, pricesell, category, taxcat, isservice, display, printto, uom) 
+VALUES ('5', '5', '5', 'Producto 5%', 1, '001', '005', 0, '<html><center>Producto 5%', '1', 'u');
+
+
+-- ADD PRODUCTS_CAT
+INSERT INTO products_cat(product) VALUES ('1');
+-- INSERT INTO products_cat(product) VALUES ('2');
+-- INSERT INTO products_cat(product) VALUES ('3');
+INSERT INTO products_cat(product) VALUES ('4');
+INSERT INTO products_cat(product) VALUES ('5');
 
 -- ADD LOCATION
 INSERT INTO locations(id, name, address) VALUES ('0','Location 1','Local');
@@ -950,7 +1064,7 @@ INSERT INTO locations(id, name, address) VALUES ('0','Location 1','Local');
 INSERT INTO suppliers(id, searchkey, name) VALUES ('0','uniCenta','uniCenta');
 
 -- ADD UOM
-INSERT INTO uom(id, name) VALUES ('0','Each');
+INSERT INTO uom(id, name) VALUES ('u','Unidad');
 
 -- ADD FLOORS
 INSERT INTO floors(id, name, image) VALUES ('0', 'Restaurant floor', $FILE{/com/unicenta/images/paperboard960_600.png});
@@ -995,9 +1109,310 @@ INSERT INTO shift_breaks(id, shiftid, breakid, starttime, endtime) VALUES ('0', 
 
 -- ADD SEQUENCES
 INSERT INTO pickup_number VALUES(1);
-INSERT INTO ticketsnum VALUES(1);
-INSERT INTO ticketsnum_refund VALUES(1);
+
+INSERT INTO ticketsnum VALUES('FV', '0', '001201', 0, 'primary', 'Active');
+INSERT INTO ticketsnum VALUES('BV', '0', '001201', 0, 'alternative', 'Active');
+INSERT INTO ticketsnum VALUES('EV', '0', '001201', 0, 'alternative', 'Active');
+
+INSERT INTO ticketsnum VALUES('FV', '1', '001301', 0, 'primary', 'Active');
+INSERT INTO ticketsnum VALUES('BV', '1', '001301', 0, 'alternative', 'Active');
+INSERT INTO ticketsnum VALUES('EV', '1', '001301', 0, 'alternative', 'Active');
+
+INSERT INTO ticketsnum VALUES('FV', '2', '001401', 0, 'primary', 'Active');
+INSERT INTO ticketsnum VALUES('BV', '2', '001401', 0, 'alternative', 'Active');
+INSERT INTO ticketsnum VALUES('EV', '2', '001401', 0, 'alternative', 'Active');
+
+
+INSERT INTO ticketsnum_refund VALUES('DV', '0', '001201', 0, 'primary', 'Active');
+INSERT INTO ticketsnum_refund VALUES('DE', '0', '001201', 0, 'alternative', 'Active');
+
+INSERT INTO ticketsnum_refund VALUES('DV', '1', '001301', 0, 'primary', 'Active');
+
+INSERT INTO ticketsnum_refund VALUES('DV', '2', '001401', 0, 'primary', 'Active');
+INSERT INTO ticketsnum_refund VALUES('DE', '2', '001401', 0, 'alternative', 'Active');
+
 INSERT INTO ticketsnum_payment VALUES(1);
+
+-- ADD IDENTIFICATION TYPES FOR ECUADOR
+INSERT INTO identification_type(code, name, legal_code) VALUES ('C', 'Cédula', '05');
+INSERT INTO identification_type(code, name, legal_code) VALUES ('R', 'RUC', '04');
+INSERT INTO identification_type(code, name, legal_code) VALUES ('P', 'Pasaporte', '06');
+INSERT INTO identification_type(code, name, legal_code) VALUES ('CF', 'Consumidor Final', '07');
+INSERT INTO identification_type(code, name, legal_code) VALUES ('IE', 'Identificación del Exterior', '08');
+
+-- ADD final consumer for Ecuador
+INSERT INTO customers (id,searchkey,taxid,name,maxdebt,address,address2,taxid_type,firstname,lastname,notes,visible,isvip,discount) 
+VALUES ('9999999999999','9999999999999','9999999999999','Consumidor Final',49.99,NULL,NULL,'CF','Consumidor','Final','',1,0,0);
+
+-- ADD taxpayer
+INSERT INTO taxpayer (id, identification, legal_name, forced_accounting, special_taxpayer, retention_agent, other)
+VALUES (1, '9999999999999', 'Mi Empresa', 'SI', '12345', '1', 'RIMPE');
+
+-- ADD establishments
+INSERT INTO establishments (id, comercial_name, city, address, phone, email, principal, status) 
+VALUES ('001', 'Principal', 'Mi ciudad', 'Mi dirección principal', '0999 999 999', 'info@pri.com', 'Principal', true);
+
+INSERT INTO establishments (id, comercial_name, city, address, phone, email, principal, status) 
+VALUES ('002', 'Sucursal', 'Mi otra ciudad', 'Mi otra dirección', '0988 888 888', 'info@sucu.com', 'BranchOffice', true);
 
 -- ADD APPLICATION VERSION
 INSERT INTO applications(id, name, version) VALUES($APP_ID{}, $APP_NAME{}, $APP_VERSION{});
+
+CREATE TABLE `ele_parameters` (
+  `id` bigint(18) NOT NULL,
+  `name` varchar(300) DEFAULT NULL,
+  `value` varchar(300) DEFAULT NULL,
+  `observation` varchar(300) DEFAULT NULL,
+  `type` varchar(300) DEFAULT NULL,
+  `status` boolean DEFAULT true,
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8;
+
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (0,'Base Directory','/app/RoQui','Base directory for files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (1,'Generated','/app/RoQui/receipt/generated','URL generated xml files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (2,'Signed','/app/RoQui/receipt/signed','URL signed xml files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (3,'Sended','/app/RoQui/receipt/sended','URL sended xml files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (4,'Authorized','/app/RoQui/receipt/authorized','URL authorized xml files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (5,'Unauthorized','/app/RoQui/receipt/unauthorized','URL unauthorized xml files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (6,'Refused','/app/RoQui/receipt/refused','URL refused xml files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (7,'PDF','/app/RoQui/receipt/pdf','URL pdf files','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (8,'Certificate','/app/RoQui/Certificate/Certificate.p12','URL certificate','Certificate');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (9,'Certificate Password','***************==','Certificate Password','Certificate');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (10,'Logo','/app/RoQui/Resources/images/logo.jpeg','URL logo','SRI');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (11,'Email Server','smtp.googlemail.com','Email Server','Email');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (12,'Email Server Port','465','Email Server Port','Email');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (13,'Email','jl@gmail.com','Email address','Email');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (14,'Email Password','***************==','Email Password','Email');
+Insert into ele_parameters (ID,name,value,observation,type) 
+values (15,'Subscription','**************==','Subscription','Subscription');
+
+
+CREATE TABLE `ele_documents` (
+    `id` BIGINT(18) NOT NULL AUTO_INCREMENT,
+    `code` VARCHAR(18) NOT NULL,
+    `number` VARCHAR(18) NOT NULL,
+    `authorization` VARCHAR(90) DEFAULT NULL,
+    `authorization_date` DATETIME DEFAULT NULL,
+    `observation` VARCHAR(3000) DEFAULT NULL,
+    `status` VARCHAR(30) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_ele` (`code` , `number`) USING BTREE,
+    KEY `inx_fecha` (`code` , `number` , `status`) USING BTREE
+)  ENGINE = InnoDB DEFAULT CHARSET=utf8;
+
+CREATE VIEW `v_ele_taxpayer` AS SELECT 
+        `id`,
+        `identification`,
+        `legal_name`,
+        `forced_accounting`,
+        `special_taxpayer`,
+        `retention_agent`,
+        `other` AS `rimpe`
+    FROM
+        `taxpayer`;
+
+CREATE VIEW `v_ele_establishments` as SELECT 
+    (cast(`t`.`id` as unsigned)) AS `id`,
+    `t`.`identification`,
+    `e`.`id` AS `code`,
+    `e`.`comercial_name` as `business_name`,
+    `e`.`address`,
+    `e`.`principal`
+from
+    `taxpayer` `t` join `establishments` `e`;
+
+CREATE VIEW `v_ele_invoices` AS select
+    (cast(ROWNUM() as unsigned)) AS `id`,
+    `t`.`code` AS `code`,
+    `t`.`serie_number` AS `number`,
+    cast('01' as char) AS `code_document`,
+    substr(`t`.`serie_number`, 1, 3) AS `establishment`,
+    substr(`t`.`serie_number`, 4, 3) AS `emission_point`,
+    cast(lpad(`t`.`ticketid`, 9, '0') as char) AS `sequence`,
+    cast(`r`.`datenew` as date) AS `date`,
+    round(sum(cast(`tl`.`units` * `tl`.`price` as decimal(19, 2))), 2) as `total_without_taxes`,
+    round(sum(cast(`tl`.`units` * `tl`.`price` + if(`tx`.`rate` > 0, `tl`.`units` * `tl`.`price` * `tx`.`rate`, 0) as decimal(19, 2))), 2) AS `total`,
+    `i`.`legal_code` AS `identification_type`,
+    `c`.`taxid` AS `identification`,
+    `c`.`name` AS `legal_name`,
+    `c`.`address` AS `address`,
+    cast(NULL as char(20)) AS `delivery_note`,
+    (
+    select
+        `e`.`address`
+    from
+        `establishments` `e`
+    where
+        `e`.`id` = substr(`t`.`serie_number`, 1, 3)) AS `establishment_address`,
+    `t`.`access_key` as `access_key`
+from
+    (`tickets` `t`
+join `receipts` `r` on
+    `t`.`id` = `r`.`id`
+join `customers` `c` on
+    `c`.`id` = `t`.`customer`
+join `identification_type` `i` on
+    `i`.`code` = `c`.`taxid_type`
+join `ticketlines` `tl` on
+    `t`.`id` = `tl`.`ticket`
+join `taxes` `tx` on
+    `tx`.`category` = `tl`.`taxid`)
+where
+    (`t`.`code` = 'FV')
+    and (`t`.`tickettype` = 0)
+group by
+    (cast(`t`.`ticketid` as unsigned)),
+    `t`.`code`,
+    `t`.`serie_number`,
+    cast('01' as char),
+    substr(`t`.`serie_number`, 1, 3),
+    substr(`t`.`serie_number`, 4, 3),
+    cast(lpad(`t`.`ticketid`, 9, '0') as char),
+    cast(`r`.`datenew` as date),
+    `i`.`legal_code`,
+    `c`.`taxid`,
+    `c`.`name`,
+    `c`.`address`,
+    cast(NULL as char(20)),
+    cast('' as char(10));
+
+CREATE VIEW `v_ele_invoices_detail` as SELECT
+    (CAST(CONCAT(`t`.`TICKETID`, `tl`.`LINE`) AS UNSIGNED)) AS `id`,
+    t.code,
+    `t`.`serie_number` AS `number`,
+    `p`.`REFERENCE` AS `principal_code`,
+    CAST(`tl`.`line` AS UNSIGNED) AS `line`,
+    `p`.`name`,
+    CAST(`tl`.`units` AS DECIMAL (19 , 2 )) AS `quantity`,
+    CONVERT('UN', CHAR) AS `unit`,
+    CAST(`tl`.`PRICE` AS DECIMAL (19 , 2 )) AS `unit_price`,
+    CONVERT(`tx`.`legalcode`, CHAR) AS `tax_code`,
+    CAST((`tx`.`RATE` * 100) AS DECIMAL (19 , 2 )) AS `tax_iva`,
+    CAST(((`tl`.`UNITS` * `tl`.`PRICE`) * `tx`.`RATE`)
+        AS DECIMAL (19 , 2 )) AS `value_iva`,
+    CAST(0 AS DECIMAL (19 , 2 )) AS `discount`,
+    CAST((`tl`.`UNITS` * `tl`.`PRICE`) AS DECIMAL (19 , 2 )) AS `total_price_without_tax`
+FROM
+    (((`tickets` `t`
+    JOIN `ticketlines` `tl` ON ((`t`.`ID` = `tl`.`TICKET`)))
+    JOIN `taxes` `tx` ON ((`tx`.`CATEGORY` = `tl`.`TAXID`)))
+    JOIN `products` `p` ON ((`p`.`ID` = `tl`.`PRODUCT`)))
+WHERE
+    (`t`.`TICKETTYPE` = 0);
+
+CREATE VIEW `v_ele_taxes_detail` as SELECT 
+        (CAST(CONCAT(`t`.`TICKETID`, `tl`.`LINE`, '2') AS UNSIGNED)) AS `id`,
+        t.code AS `code`,
+        `t`.`serie_number` AS `number`,
+        `p`.`REFERENCE` AS `principal_code`,
+        CAST(`tl`.`LINE` AS UNSIGNED) AS `line`,
+        CONVERT( '2' , CHAR) AS `tax_code`,
+        CONVERT( `tx`.`legalcode` , CHAR) AS `percentage_code`,
+        ABS(CAST((`tl`.`UNITS` * `tl`.`PRICE`) AS DECIMAL (19 , 2 ))) AS `tax_base`,
+        CAST((`tx`.`RATE` * 100) AS DECIMAL (19 , 2 )) AS `tax_iva`,
+        ABS(CAST(((`tl`.`UNITS` * `tl`.`PRICE`) * `tx`.`RATE`)
+                    AS DECIMAL (19 , 2 ))) AS `value`
+    FROM
+        (((`tickets` `t`
+        JOIN `ticketlines` `tl` ON ((`t`.`ID` = `tl`.`TICKET`)))
+        JOIN `taxes` `tx` ON ((`tx`.`CATEGORY` = `tl`.`TAXID`)))
+        JOIN `products` `p` ON ((`p`.`ID` = `tl`.`PRODUCT`)));
+
+CREATE VIEW v_ele_informations as WITH informations AS 
+   (SELECT `TAXID` AS `identification`,
+	'Email' AS `name`,
+	`EMAIL` AS `value`
+FROM `customers`
+WHERE
+	((`EMAIL` IS NOT NULL)
+		AND (`EMAIL` <> ''))
+UNION all SELECT
+	`TAXID`,
+	'Dirección',
+	`ADDRESS`
+FROM
+	`customers`
+WHERE
+	((`ADDRESS` IS NOT NULL)
+		AND (`ADDRESS` <> ''))
+UNION all SELECT
+	`TAXID`,
+	'Teléfono',
+	`PHONE`
+FROM
+	`customers`
+WHERE
+	((`PHONE` IS NOT NULL)
+		AND (`PHONE` <> ''))
+		)
+SELECT ROWNUM() AS `id`,
+	`identification`,
+	`name`,
+	`value` FROM informations;
+
+CREATE  VIEW `v_ele_payments` AS SELECT ROWNUM() `id`,
+        `t`.`code` AS `code`,
+        `t`.`serie_number` AS `number`,
+        CONVERT(IF((`p`.`PAYMENT` = 'cash'), '01', '20') , CHAR) AS `way_pay`,
+        CONVERT(IF((`p`.`PAYMENT` = 'cash'),
+                'SIN UTILIZACION DEL SISTEMA FINANCIERO',
+                'OTROS CON UTILIZACION DEL SISTEMA FINANCIERO'),
+            CHAR) AS `name`,
+        CAST(`p`.`total` AS DECIMAL (19, 2 )) AS `total`,
+        CONVERT(NULL, DECIMAL (9)) AS `payment_deadline`,
+        CONVERT(NULL, CHAR (20)) AS `unit_time`
+    FROM
+        ((`tickets` `t`
+        JOIN `receipts` `r` ON ((`t`.`ID` = `r`.`ID`)))
+        JOIN `payments` `p` ON ((`r`.`ID` = `p`.`RECEIPT`)))
+    WHERE
+        (`t`.`TICKETTYPE` = 0);
+
+CREATE  VIEW `v_ele_report_invoices` AS select `j`.`id` AS `id`,
+    `j`.`code` AS `code`,
+    `j`.`number` AS `number`,
+    `j`.`date` AS `date`,
+    `j`.`total` AS `total`,
+    `j`.`identification` AS `identification`,
+    `j`.`legal_name` AS `legal_name`,
+    (select
+        `i`.`value`
+    from
+        `v_ele_informations` `i`
+    where
+        `i`.`name` = 'Email'
+        and `i`.`identification` = `j`.`identification`
+    limit 1) AS `email`,
+    ifnull((select `e`.`status` from `ele_documents` `e` where `e`.`code` = `j`.`code` and `e`.`number` = `j`.`number`), 'NO ENVIADO') AS `status`
+from
+    `v_ele_invoices` `j`
+order by `j`.`number` desc, `j`.`number` desc;
+
+CREATE VIEW `v_version` AS select 1 AS `id`,
+    version() AS `version_database`;
+
+CREATE VIEW `v_ele_users` AS select rownum() AS `id`,
+    `u`.`name` AS `username`,
+    `u`.`apppassword` AS `password`,
+    if(`r`.`name` in ('Administrator role', 'Manager role'), 'Administrator', 'Normal') AS `role`
+from
+    (`people` `u`
+join `roles` `r` on
+    (`u`.`role` = `r`.`id`))
+where
+    `u`.`visible` = 1;
