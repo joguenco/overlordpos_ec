@@ -955,6 +955,10 @@ public class DataLogicSales extends BeanFactoryDataSingle {
 
         ProductStock productStock = (ProductStock) preparedSentence.find(pId, location);
 
+        if (productStock.getUnits() == null) {
+            return null;
+        }
+        
         return productStock;
     }
 
