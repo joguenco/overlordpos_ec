@@ -260,7 +260,9 @@ public abstract class BatchSentence extends BaseSentence {
                     if (sLine.endsWith(";")) {
                         // ha terminado la sentencia
                         sSentence.append(sLine.substring(0, sLine.length() - 1));                             
-
+                        
+                        System.out.println(sSentence.toString());
+                        
                         // File parameters
                         Pattern pattern = Pattern.compile("\\$(\\w+)\\{([^}]*)\\}");
                         Matcher matcher = pattern.matcher(sSentence.toString());
