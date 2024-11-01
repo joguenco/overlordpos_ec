@@ -408,66 +408,19 @@ public class BrowsableEditableData {
      */
     public void saveData() throws BasicException {
 
-        //Get the customer being referenced for firing action events
-        boolean isCustomerChangeEvent = false;
-        Object[] customer = new Object[27];
-        if (m_editorrecord.getClass().getName().equals("com.unicenta.pos.customers.CustomersView")) {
-            isCustomerChangeEvent = true;
-            customer = (Object[]) m_editorrecord.createValue();
-        }
-
         if (m_Dirty.isDirty()) {
             if (m_iState == ST_UPDATE) {
                 int i = m_bd.updateRecord(m_iIndex, m_editorrecord.createValue());
                 m_editorrecord.refresh();
                 baseMoveTo(i);
-
-                if (isCustomerChangeEvent) {
-                    triggerCustomerEvent("customer.updated", customer, customer[27]);
-                }
-
-
             } else if (m_iState == ST_INSERT) {
-
-                if (isCustomerChangeEvent) {
-                    m_editorrecord.refresh();
-
-                    AppView appView = (AppView) customer[27];
-                    int i = m_bd.insertRecord(customer);
-                    m_editorrecord.refresh();
-                    baseMoveTo(i);
-
-                    triggerCustomerEvent("customer.created", customer, customer[27]);
-
-                    int n = JOptionPane.showConfirmDialog(
-                          null, 
-                          AppLocal.getIntString("message.customerassign"), 
-                          AppLocal.getIntString("title.editor"), 
-                            JOptionPane.YES_NO_OPTION);
-
-                    if (n == 0) {
-                        CustomerInfoGlobal customerInfoGlobal = CustomerInfoGlobal.getInstance();
-                        CustomerInfoExt customerInfoExt = new CustomerInfoExt(customer[0].toString());
-                        customerInfoGlobal.setCustomerInfoExt(customerInfoExt);
-                        customerInfoExt.setName(customer[3].toString());
-
-                        appView.getAppUserView().showTask("com.unicenta.pos.sales.JPanelTicketSales");
-                    }
-
-                } else {
-                    int i = m_bd.insertRecord(m_editorrecord.createValue());
-                    m_editorrecord.refresh();
-                    baseMoveTo(i);
-                }
-
+                int i = m_bd.insertRecord(m_editorrecord.createValue());
+                m_editorrecord.refresh();
+                baseMoveTo(i);
             } else if (m_iState == ST_DELETE) {
                 int i = m_bd.removeRecord(m_iIndex);
                 m_editorrecord.refresh();
                 baseMoveTo(i);
-
-                if (isCustomerChangeEvent) {
-                    triggerCustomerEvent("customer.deleted", customer, customer[27]);
-                }
             }
         }   
     }
