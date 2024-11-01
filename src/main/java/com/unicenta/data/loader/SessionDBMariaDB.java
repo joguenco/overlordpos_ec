@@ -85,5 +85,17 @@ public class SessionDBMariaDB implements SessionDB {
     @Override
     public SentenceFind resetSequenceSentence(Session s, String sequence) {
         return new SequenceForMySQL(s, "UPDATE pickup_number SET ID=1");
-    }    
+    }
+
+    /**
+     * Get sequence from ticketsnum and update next by user or people
+     * @param s
+     * @param sSeqTable
+     * @param peopleId 
+     * @param code 
+     */
+    @Override
+    public SentenceFind getSequenceSentence(Session s, String sequence, String peopleId, String code) {
+        return new SequenceForMySQL(s, sequence, peopleId, code);
+    }
 }

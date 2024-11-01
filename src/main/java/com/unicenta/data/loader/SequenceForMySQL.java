@@ -39,6 +39,24 @@ public class SequenceForMySQL extends BaseSentence {
         sent2 = new StaticSentence(s, "SELECT LAST_INSERT_ID()", null, SerializerReadInteger.INSTANCE);
     }
     
+    /**
+     * Get sequence from ticketsnum and update next by user or people
+     *
+     * @param s
+     * @param sSeqTable
+     * @param peopleId
+     * @param code
+     */
+    public SequenceForMySQL(Session s, String sSeqTable, String peopleId, String code) {
+            var query = "UPDATE " + sSeqTable + " "
+                    + "SET ID = LAST_INSERT_ID(ID + 1) "
+                    + "where people_id = '" + peopleId + "'"
+                    + "and code = '" + code + "'";
+            
+            sent1 = new StaticSentence(s, query);
+            sent2 = new StaticSentence(s, "SELECT LAST_INSERT_ID()", null, SerializerReadInteger.INSTANCE);
+    }
+    
     // Funciones de bajo nivel
         
     /**

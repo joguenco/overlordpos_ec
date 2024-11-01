@@ -89,6 +89,11 @@ public class SessionDBDerby implements SessionDB {
      */
     @Override
     public SentenceFind resetSequenceSentence(Session s, String sequence) {
-        return new SequenceForDerby(s, sequence);    
-}
+        return new SequenceForDerby(s, sequence);
+    }
+
+    @Override
+    public SentenceFind getSequenceSentence(Session s, String sequence, String peopleId, String code) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }

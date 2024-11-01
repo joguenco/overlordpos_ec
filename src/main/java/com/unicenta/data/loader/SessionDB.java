@@ -56,6 +56,17 @@ public interface SessionDB {
     public String getName();
 
     /**
+     * Get sequence from ticketsnum by user or people
+     * @param s
+     * @param sequence
+     * @param peopleId
+     * @param code
+     * @return 
+     */
+    public SentenceFind getSequenceSentence(Session s, String sequence, String peopleId, String code);
+
+    
+    /**
      *
      * @param s
      * @param sequence

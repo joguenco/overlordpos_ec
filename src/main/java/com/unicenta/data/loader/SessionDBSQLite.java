@@ -66,5 +66,10 @@ public class SessionDBSQLite implements SessionDB {
     @Override
     public SentenceFind resetSequenceSentence(Session s, String sequence) {
         return new SequenceForSQLite(s, "UPDATE pickup_number SET ID=1");
-    }    
+    }
+
+    @Override
+    public SentenceFind getSequenceSentence(Session s, String sequence, String peopleId, String code) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }

@@ -91,7 +91,12 @@ public class SessionDBGeneric implements SessionDB {
      * @param sequence
      * @return
      */
-    public SentenceFind resetSequenceSentence(Session s, String sequence){
-        return new StaticSentence(s, "ALTER SEQUENCE " + sequence + " RESTART WITH 0", null, SerializerReadInteger.INSTANCE);   
-}    
+    public SentenceFind resetSequenceSentence(Session s, String sequence) {
+        return new StaticSentence(s, "ALTER SEQUENCE " + sequence + " RESTART WITH 0", null, SerializerReadInteger.INSTANCE);
+    }
+
+    @Override
+    public SentenceFind getSequenceSentence(Session s, String sequence, String peopleId, String code) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }
