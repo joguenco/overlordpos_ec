@@ -19,8 +19,8 @@
 
 package com.unicenta.pos.payment;
 
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.common.AppContext;
+//import com.unicenta.plugins.Application;
+//import com.unicenta.plugins.common.AppContext;
 import com.unicenta.pos.util.RoundUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -68,6 +68,8 @@ public class PaymentGatewayPaymentSense implements PaymentGateway {
         int timeout = 180;
 
         double roundedValue = RoundUtils.round(payinfo.getTotal());
+        System.out.println("This method not found");
+        /*
         new Application().paymentSenseTransaction(roundedValue, getPaymentWindow(roundedValue));
 
         while (AppContext.getIsProcessing() == null || AppContext.getIsProcessing()) {
@@ -97,5 +99,6 @@ public class PaymentGatewayPaymentSense implements PaymentGateway {
         else {
             payinfo.paymentError("Transaction Error! Please try again", AppContext.getPaymentResult().getTransactionResult());
         }
+        */
     }
 }

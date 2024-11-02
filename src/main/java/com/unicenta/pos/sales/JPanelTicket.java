@@ -32,7 +32,7 @@ import com.unicenta.data.gui.ComboBoxValModel;
 import com.unicenta.data.gui.ListKeyed;
 import com.unicenta.data.gui.MessageInf;
 import com.unicenta.data.loader.SentenceList;
-import com.unicenta.plugins.Application;
+//import com.unicenta.plugins.Application;
 import com.unicenta.pos.catalog.JCatalog;
 import com.unicenta.pos.customers.*;
 import com.unicenta.pos.forms.*;
@@ -1854,7 +1854,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
               if (m_config.getProperty("till.digital-receipt") != null && m_config.getProperty("till.digital-receipt").equals("true")){
                 log.debug("Send digital receipt");
                 String xml = dlSystem.getResourceAsXML("Printer.Ticket");
-                new Application().sendReceipt(ticket, xml, getActiveWindow());
+//                new Application().sendReceipt(ticket, xml, getActiveWindow());
               }
 
               executeEvent(ticket, ticketext, "ticket.close",

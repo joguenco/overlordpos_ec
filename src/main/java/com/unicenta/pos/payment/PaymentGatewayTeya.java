@@ -19,8 +19,8 @@
 
 package com.unicenta.pos.payment;
 
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.common.AppContext;
+//import com.unicenta.plugins.Application;
+//import com.unicenta.plugins.common.AppContext;
 import com.unicenta.pos.util.RoundUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -67,7 +67,9 @@ public class PaymentGatewayTeya implements PaymentGateway {
         int timeout = 150;
 
         double roundedValue = RoundUtils.round(payinfo.getTotal());
-
+        
+        System.out.println("This method not found");
+        /*
         new Application().teyaTransaction(roundedValue, getPaymentWindow(roundedValue), payinfo.getTransactionID());
 
         while (AppContext.getTeyaPaymentResult() == null) {
@@ -94,7 +96,7 @@ public class PaymentGatewayTeya implements PaymentGateway {
         else {
             payinfo.paymentError("Transaction Error! Please try again", AppContext.getTeyaPaymentResult().getStatus());
         }
-
+        */
 
 
     }

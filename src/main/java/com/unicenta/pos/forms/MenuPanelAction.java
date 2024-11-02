@@ -19,7 +19,7 @@
 
 package com.unicenta.pos.forms;
 
-import com.unicenta.plugins.Application;
+//import com.unicenta.plugins.Application;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
@@ -55,7 +55,7 @@ public class MenuPanelAction extends AbstractAction {
 
         if (m_sMyView.equals("plugins.configure") ) {
             log.debug("Configure plugins");
-            new Application().initScreen("Dashboard", getActiveWindow());
+//            new Application().initScreen("Dashboard", getActiveWindow());
         }
         else {
             m_App.getAppUserView().showTask(m_sMyView);

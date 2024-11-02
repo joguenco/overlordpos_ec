@@ -30,8 +30,8 @@ import javax.swing.UIManager;
 import javax.swing.plaf.metal.MetalLookAndFeel;
 
 import com.unicenta.format.Formats;
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.metrics.Metrics;
+//import com.unicenta.plugins.Application;
+//import com.unicenta.plugins.metrics.Metrics;
 import com.unicenta.pos.instance.InstanceQuery;
 import com.unicenta.pos.ticket.TicketInfo;
 
@@ -124,12 +124,13 @@ public class StartPOS {
   private static void applicationStarted(String host, JRootApp jRootApp) {
     new Thread(() -> {
       try {
-        Metrics metrics = new Metrics();
-        metrics.setDevice(host);
-        metrics.setUniCentaVersion(AppLocal.APP_VERSION);
-        Application application = new Application();
-        application.postMetrics(metrics);
-        application.startEventListener(host, jRootApp);
+//        Metrics metrics = new Metrics();
+//        metrics.setDevice(host);
+//        metrics.setUniCentaVersion(AppLocal.APP_VERSION);
+//        Application application = new Application();
+//        application.postMetrics(metrics);
+//        application.startEventListener(host, jRootApp);
+          System.out.println("Start pluggins in a thread");
       } catch (Exception e) {
         log.error("Problem with starting the uniCenta plugin application:${}", e.getMessage());
       }

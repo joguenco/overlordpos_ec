@@ -19,8 +19,8 @@
 
 package com.unicenta.pos.forms;
 
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.metrics.Metrics;
+//import com.unicenta.plugins.Application;
+//import com.unicenta.plugins.metrics.Metrics;
 import com.unicenta.pos.config.JFrmConfig;
 import com.unicenta.pos.instance.AppMessage;
 import com.unicenta.pos.instance.InstanceManager;
