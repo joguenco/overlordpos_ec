@@ -10,7 +10,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
-    <derby.version>10.15.2.0</derby.version>
+    <!--<derby.version>10.15.2.0</derby.version>-->
   </properties>
   <dependencies>
     <dependency>
@@ -239,7 +239,7 @@
       <artifactId>mysql-connector-j</artifactId>
       <version>9.1.0</version>
     </dependency>
-    <dependency>
+<!--    <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derby</artifactId>
       <version>${derby.version}</version>
@@ -253,7 +253,7 @@
       <groupId>org.apache.derby</groupId>
       <artifactId>derbyshared</artifactId>
       <version>${derby.version}</version>
-    </dependency>
+    </dependency>-->
     <dependency>
       <groupId>xml-apis</groupId>
       <artifactId>xml-apis</artifactId>
