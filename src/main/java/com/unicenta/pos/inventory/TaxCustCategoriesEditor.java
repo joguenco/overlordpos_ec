@@ -46,6 +46,7 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
     public TaxCustCategoriesEditor(DirtyManager dirty) {
         initComponents();
 
+        txtId.getDocument().addDocumentListener(dirty);
         m_jName.getDocument().addDocumentListener(dirty);
         
         writeValueEOF();
@@ -57,7 +58,10 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
     @Override
     public void writeValueEOF() {
         m_oId = null;
+        txtId.setText(null);
         m_jName.setText(null);
+        
+        txtId.setEnabled(false);
         m_jName.setEnabled(false);
     }
 
@@ -67,7 +71,10 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
     @Override
     public void writeValueInsert() {
         m_oId = UUID.randomUUID().toString();
+        txtId.setText(null);
         m_jName.setText(null);
+        
+        txtId.setEnabled(true);
         m_jName.setEnabled(true);
     }
 
@@ -80,7 +87,10 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
 
         Object[] taxcustcat = (Object[]) value;
         m_oId = taxcustcat[0];
+        txtId.setText(Formats.STRING.formatValue(taxcustcat[0]));
         m_jName.setText(Formats.STRING.formatValue(taxcustcat[1]));
+        
+        txtId.setEnabled(false);
         m_jName.setEnabled(false);
     }    
 
@@ -93,7 +103,10 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
 
         Object[] taxcustcat = (Object[]) value;
         m_oId = taxcustcat[0];
+        txtId.setText(Formats.STRING.formatValue(taxcustcat[0]));
         m_jName.setText(Formats.STRING.formatValue(taxcustcat[1]));
+        
+        txtId.setEnabled(false);
         m_jName.setEnabled(true);
     }
 
@@ -107,7 +120,12 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
         
         Object[] taxcustcat = new Object[2];
 
-        taxcustcat[0] = m_oId;
+        if (txtId.getText().isEmpty()) {
+            taxcustcat[0] = m_oId;
+        }
+        else {
+            taxcustcat[0] = txtId.getText();
+        }
         taxcustcat[1] = m_jName.getText();
 
         return taxcustcat;
@@ -140,6 +158,8 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
 
         jLabel2 = new javax.swing.JLabel();
         m_jName = new javax.swing.JTextField();
+        jLabel3 = new javax.swing.JLabel();
+        txtId = new javax.swing.JTextField();
 
         setLayout(null);
 
@@ -153,11 +173,26 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
             }
         });
         add(jLabel2);
-        jLabel2.setBounds(20, 20, 80, 25);
+        jLabel2.setBounds(20, 80, 110, 25);
 
         m_jName.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         add(m_jName);
-        m_jName.setBounds(100, 20, 200, 25);
+        m_jName.setBounds(140, 80, 200, 25);
+
+        jLabel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel3.setText(AppLocal.getIntString("label.dutyid")); // NOI18N
+        jLabel3.setToolTipText("");
+        jLabel3.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jLabel3MouseClicked(evt);
+            }
+        });
+        add(jLabel3);
+        jLabel3.setBounds(20, 50, 110, 25);
+
+        txtId.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        add(txtId);
+        txtId.setBounds(140, 50, 200, 25);
     }// </editor-fold>//GEN-END:initComponents
 
     private void jLabel2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel2MouseClicked
@@ -173,10 +208,16 @@ public final class TaxCustCategoriesEditor extends JPanel implements EditorRecor
         }
     }//GEN-LAST:event_jLabel2MouseClicked
 
+    private void jLabel3MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel3MouseClicked
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jLabel3MouseClicked
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JTextField m_jName;
+    private javax.swing.JTextField txtId;
     // End of variables declaration//GEN-END:variables
 
 }
