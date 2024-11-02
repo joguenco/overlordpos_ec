@@ -58,7 +58,7 @@ public class JPanelConfigDatabase extends javax.swing.JPanel implements PanelCon
         jcboDBDriver.addActionListener(dirty);
         // still in development!
         //jcboDBDriver.addItem("SQLite");
-        jcboDBDriver.addItem("Apache Derby");
+//        jcboDBDriver.addItem("Apache Derby");
         jcboDBDriver.addItem("MariaDB");
         jcboDBDriver.addItem("MySQL");
         jcboDBDriver.setSelectedIndex(0);
