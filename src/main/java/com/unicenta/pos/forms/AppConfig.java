@@ -377,22 +377,22 @@ public class AppConfig implements AppProperties {
     properties.setProperty("override.pin", "");
 
     // Default database
-    properties.setProperty("db.driverlib", new File(new File(dirname), "derby-10.14.2.0.jar").getAbsolutePath());
-    properties.setProperty("db.engine", "Derby");
-    properties.setProperty("db.driver", "org.apache.derby.jdbc.EmbeddedDriver");
+    properties.setProperty("db.driverlib", new File(new File(dirname), "mariadb-java-client-3.5.0.jar").getAbsolutePath());
+    properties.setProperty("db.engine", "MariaDB");
+    properties.setProperty("db.driver", "org.mariadb.jdbc.Driver");
 
     properties.setProperty("db.name", "Main DB");
-    properties.setProperty("db.URL", "jdbc:derby:" + System.getProperty("user.home")+"/.unicenta/");
-    properties.setProperty("db.schema", "unicentaopos-database;create=true");
-    properties.setProperty("db.options", "");
-    properties.setProperty("db.user", "");
+    properties.setProperty("db.URL", "jdbc:mariadb://localhost:3306/");
+    properties.setProperty("db.schema", "overlord");
+    properties.setProperty("db.options", "?zeroDateTimeBehavior=convertToNull");
+    properties.setProperty("db.user", "overlord");
     properties.setProperty("db.password", "");
 
 
 // secondary DB
     properties.setProperty("db1.name", "");
-    properties.setProperty("db1.URL", "jdbc:mysql://localhost:3306/");
-    properties.setProperty("db1.schema", "unicentaopos");
+    properties.setProperty("db1.URL", "jdbc:mariadb://localhost:3306/");
+    properties.setProperty("db1.schema", "overlord");
     properties.setProperty("db1.options", "?zeroDateTimeBehavior=convertToNull");
     properties.setProperty("db1.user", "");
     properties.setProperty("db1.password", "");
