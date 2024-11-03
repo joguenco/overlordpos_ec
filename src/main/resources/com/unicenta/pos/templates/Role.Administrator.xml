@@ -45,6 +45,8 @@
     <class name="payment.magcard"/>
     <class name="payment.slip"/>    
     <class name="payment.voucher"/>
+    <class name="payment.deuna"/>
+    
     <class name="refund.cash"/>
     <class name="refund.cheque"/>
     <class name="refund.magcard"/>
@@ -159,6 +161,11 @@
     <class name="com.unicenta.pos.mant.JPanelFloors"/>
     <class name="com.unicenta.pos.mant.JPanelPlaces"/>
     <class name="com.unicenta.pos.voucher.VoucherPanel"/>
+    <class name="dev.joguenco.pos.taxpayer.Taxpayer"/>
+    <class name="dev.joguenco.pos.establishment.EstablishmentPanel"/>
+    <class name="dev.joguenco.pos.ticketsnum.TicketsNumPanel"/>
+    <class name="dev.joguenco.pos.ticketsnumrefund.TicketsNumRefundPanel"/>
+    <class name="dev.joguenco.pos.holiday.Holiday"/>
             <class name="/com/unicenta/reports/customers_vouchers.bs"/>
             <class name="/com/unicenta/reports/users.bs"/>
             <class name="/com/unicenta/reports/users_nosales.bs"/>
