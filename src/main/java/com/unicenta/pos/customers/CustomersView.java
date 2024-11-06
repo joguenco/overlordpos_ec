@@ -31,6 +31,7 @@ import com.unicenta.pos.forms.AppView;
 import com.unicenta.pos.forms.BeanFactoryException;
 import com.unicenta.pos.forms.DataLogicSales;
 import com.unicenta.pos.util.StringUtils;
+import dev.joguenco.error.ErrorMessage;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
@@ -71,6 +72,10 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
     //HS updates to get last added Customer 06.03.2014
     private AppView appView;
     private CustomerInfo customerInfo;
+    
+    // For identification type combobox 
+    private SentenceList sentenceIdentificationType;
+    private ComboBoxValModel modelIdentificationType;
         
     /** Creates new form CustomersView
      * @param app
@@ -85,6 +90,10 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
 
         m_sentcat = dlSales.getTaxCustCategoriesList();
         m_CategoryModel = new ComboBoxValModel();
+        
+        sentenceIdentificationType = dlSales.getIdentificationTypeList();
+        modelIdentificationType = new ComboBoxValModel(
+        sentenceIdentificationType.list());
         
         m_Dirty = dirty;        
         m_jTaxID.getDocument().addDocumentListener(dirty);
@@ -115,10 +124,12 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         txtCountry.getDocument().addDocumentListener(dirty);
 
         m_jdate.getDocument().addDocumentListener(dirty);
+        
+        cbxIdentificationType.addActionListener(dirty);
 
             init();
-        } catch (BeanFactoryException ex) {
-            log.error(ex.getMessage());
+        } catch (BeanFactoryException | BasicException ex) {
+            log.error(CustomersView.class.getName() + " " + ex.getMessage());
         }
     }
 
@@ -138,6 +149,8 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         m_CategoryModel = new ComboBoxValModel(a);
         m_jCategory.setModel(m_CategoryModel);         
         String cId = null;
+        cbxIdentificationType.setModel(modelIdentificationType);
+
     }
     
     /**
@@ -184,9 +197,11 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         txtCountry.setText(null);
 
         m_jdate.setText(null);
-        
+        modelIdentificationType.setSelectedFirst();
+
         m_jTaxID.setEnabled(false);
-        m_jSearchkey.setEnabled(false);
+        m_jSearchkey.setVisible(false);
+        jLabel8.setVisible(false);//Is label of m_jSearchkey
         m_jName.setEnabled(false);
         m_jCategory.setEnabled(false);
         m_jNotes.setEnabled(false);
@@ -218,6 +233,7 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
 
         m_jdate.setEnabled(false);
         m_jbtndate.setEnabled(false);
+        cbxIdentificationType.setEnabled(false);
 
         jTableCustomerTransactions.setEnabled(false);
         
@@ -259,9 +275,10 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         txtCountry.setText(null);
         
         m_jdate.setText(null);
+        modelIdentificationType.setSelectedFirst();
 
         m_jTaxID.setEnabled(true);
-        m_jSearchkey.setEnabled(true);
+        m_jSearchkey.setVisible(false);//m_jSearchkey.setEnabled(true);
         m_jName.setEnabled(true);
         m_jCategory.setEnabled(true);
         m_jNotes.setEnabled(true);
@@ -295,7 +312,10 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         jTableCustomerTransactions.setEnabled(false);
         
         m_jdate.setEnabled(true);
-        m_jbtndate.setEnabled(true);        
+        m_jbtndate.setEnabled(true);
+        cbxIdentificationType.setEnabled(true);
+
+        cbxIdentificationType.requestFocus();
 
         repaint();
         refresh();        
@@ -336,9 +356,10 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         m_jVip.setSelected(((Boolean) customer[24]));
         txtDiscount.setText(Formats.DOUBLE.formatValue(customer[25]));        
         m_jdate.setText(Formats.DATE.formatValue(customer[26]));         
+        modelIdentificationType.setSelectedKey(customer[27]);
         
         m_jTaxID.setEnabled(false);
-        m_jSearchkey.setEnabled(false);
+        m_jSearchkey.setVisible(false);//m_jSearchkey.setEnabled(false);
         m_jName.setEnabled(false);
         m_jNotes.setEnabled(false);
         txtMaxdebt.setEnabled(false);
@@ -376,7 +397,8 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         jTableCustomerTransactions.setEnabled(false);
 
         m_jdate.setEnabled(false);
-        m_jbtndate.setEnabled(false);        
+        m_jbtndate.setEnabled(false);
+        cbxIdentificationType.setEnabled(false);
 
         repaint();
         refresh();        
@@ -416,10 +438,11 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         m_jVip.setSelected(((Boolean) customer[24]));        
         txtDiscount.setText(Formats.DOUBLE.formatValue(customer[25]));        
 
-        m_jdate.setText(Formats.DATE.formatValue(customer[26]));        
+        m_jdate.setText(Formats.DATE.formatValue(customer[26]));
+        modelIdentificationType.setSelectedKey(customer[27]);
 
         m_jTaxID.setEnabled(true);
-        m_jSearchkey.setEnabled(true);
+        m_jSearchkey.setVisible(false);//m_jSearchkey.setEnabled(true);
         m_jName.setEnabled(true);
         m_jNotes.setEnabled(true);
         txtMaxdebt.setEnabled(true);
@@ -449,7 +472,8 @@ public final class CustomersView extends javax.swing.JPanel implements EditorRec
         m_jCategory.setEnabled(true);
         
         m_jdate.setEnabled(true);
-        m_jbtndate.setEnabled(true);         
+        m_jbtndate.setEnabled(true);
+        cbxIdentificationType.setEnabled(false);
 
         jBtnCreateCard.setEnabled(true);
         jBtnClearCard.setEnabled(true);
@@ -492,12 +516,19 @@ public void resetTranxTable() {
     @Override
     public Object createValue() throws BasicException {
         
+        ErrorMessage validate = validateData();
+
+        if (validate.getIsError()) {
+            throw new BasicException(validate.getMessage());
+        }
+
         Object[] customer = new Object[28];
         
         customer[0] = m_oId == null ? UUID.randomUUID().toString() : m_oId;
-        customer[1] = m_jSearchkey.getText();
+        //Hide m_jSearchkey and set m_jTaxID
+        customer[1] = m_jTaxID.getText();//m_jSearchkey.getText();
         customer[2] = m_jTaxID.getText();
-        customer[3] = m_jName.getText();
+        customer[3] = m_jName.getText().trim();
         customer[4] = m_CategoryModel.getSelectedKey();
         customer[5] = Formats.STRING.parseValue(jcard.getText()); // Format to manage NULL values
         customer[6] = Formats.CURRENCY.parseValue(txtMaxdebt.getText(), 0.0);
@@ -516,13 +547,19 @@ public void resetTranxTable() {
         customer[19] = m_jNotes.getText();
         customer[20] = m_jVisible.isSelected();
         customer[21] = Formats.TIMESTAMP.parseValue(txtCurdate.getText()); // not saved
-        customer[22] = Formats.CURRENCY.parseValue(txtCurdebt.getText()); // not saved
-        customer[23] = m_jImage.getImage();  
+
+        if (txtCurdebt.getText().isEmpty()) {
+            customer[22] = Formats.CURRENCY.parseValue("0");
+        } else {
+            customer[22] = Formats.CURRENCY.parseValue(txtCurdebt.getText()); // not saved
+        }
+
+        customer[23] = m_jImage.getImage();
         customer[24] = m_jVip.isSelected();
         customer[25] = Formats.CURRENCY.parseValue(txtDiscount.getText(), 0.0);
         customer[26] = Formats.TIMESTAMP.parseValue(m_jdate.getText());
-        customer[27] = (Object)getAppView();
-        
+        customer[27] = modelIdentificationType.getSelectedKey();
+
         if (m_jName.getText().contains("&")) {
             JOptionPane.showMessageDialog(null, 
                 AppLocal.getIntString("message.ampersand"));
@@ -531,6 +568,23 @@ public void resetTranxTable() {
         return customer;
     }
     
+    private ErrorMessage validateData() {
+
+        if (m_jTaxID.getText().trim().isEmpty()) {
+            return new ErrorMessage("La identificación no puede ser vacía");
+        }
+
+        if (m_jName.getText().trim().isEmpty()) {
+            return new ErrorMessage("La razón social no puede ser vacío");
+        }
+
+        if (txtAddress.getText().trim().isEmpty() && !m_jTaxID.getText().equals("222222222222")) {
+            return new ErrorMessage("La dirección no puede ser vacía");
+        }
+
+        return new ErrorMessage();
+    }
+
     //HS New methods to get last customer saved 06.03.2014
     public AppView getAppView() {
         return appView;
@@ -655,10 +709,6 @@ public void resetTranxTable() {
         m_jName = new javax.swing.JTextField();
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jPanel1 = new javax.swing.JPanel();
-        jLabel19 = new javax.swing.JLabel();
-        txtFirstName = new javax.swing.JTextField();
-        jLabel15 = new javax.swing.JLabel();
-        txtLastName = new javax.swing.JTextField();
         jLabel16 = new javax.swing.JLabel();
         txtEmail = new javax.swing.JTextField();
         jLabel17 = new javax.swing.JLabel();
@@ -669,8 +719,6 @@ public void resetTranxTable() {
         txtFax = new javax.swing.JTextField();
         webBtnMail = new com.alee.laf.button.WebButton();
         jPanel2 = new javax.swing.JPanel();
-        jLabel13 = new javax.swing.JLabel();
-        txtAddress = new javax.swing.JTextField();
         jLabel20 = new javax.swing.JLabel();
         txtCountry = new javax.swing.JTextField();
         jLabel21 = new javax.swing.JLabel();
@@ -715,6 +763,12 @@ public void resetTranxTable() {
         jBtnClearCard = new javax.swing.JButton();
         jLabel4 = new javax.swing.JLabel();
         m_jVisible = new javax.swing.JCheckBox();
+        txtFirstName = new javax.swing.JTextField();
+        jLabel19 = new javax.swing.JLabel();
+        txtLastName = new javax.swing.JTextField();
+        jLabel15 = new javax.swing.JLabel();
+        txtAddress = new javax.swing.JTextField();
+        jLabel13 = new javax.swing.JLabel();
 
         setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         setPreferredSize(new java.awt.Dimension(1000, 600));
@@ -763,21 +817,6 @@ public void resetTranxTable() {
 
         jPanel1.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
 
-        jLabel19.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel19.setText(AppLocal.getIntString("label.firstname")); // NOI18N
-        jLabel19.setAlignmentX(0.5F);
-        jLabel19.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        txtFirstName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        txtFirstName.setPreferredSize(new java.awt.Dimension(300, 30));
-
-        jLabel15.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel15.setText(AppLocal.getIntString("label.lastname")); // NOI18N
-        jLabel15.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        txtLastName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        txtLastName.setPreferredSize(new java.awt.Dimension(300, 30));
-
         jLabel16.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel16.setText(AppLocal.getIntString("label.email")); // NOI18N
         jLabel16.setPreferredSize(new java.awt.Dimension(150, 30));
@@ -825,10 +864,6 @@ public void resetTranxTable() {
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(txtLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(txtFax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -841,27 +876,15 @@ public void resetTranxTable() {
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(txtPhone, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtPhone2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jLabel19, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(txtFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(txtPhone2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(webBtnMail, javax.swing.GroupLayout.PREFERRED_SIZE, 89, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(76, Short.MAX_VALUE))
+                .addContainerGap(81, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel19, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(78, 78, 78)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -884,13 +907,6 @@ public void resetTranxTable() {
         jTabbedPane1.addTab(AppLocal.getIntString("label.contact"), jPanel1); // NOI18N
 
         jPanel2.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-
-        jLabel13.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel13.setText(AppLocal.getIntString("label.address")); // NOI18N
-        jLabel13.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        txtAddress.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        txtAddress.setPreferredSize(new java.awt.Dimension(300, 30));
 
         jLabel20.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLabel20.setText(AppLocal.getIntString("label.country")); // NOI18N
@@ -937,12 +953,10 @@ public void resetTranxTable() {
                     .addComponent(jLabel20, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel24, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel21, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel21, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(txtCity, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(txtAddress, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(txtAddress2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(txtRegion, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(txtCountry, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -955,11 +969,7 @@ public void resetTranxTable() {
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtAddress, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(42, 42, 42)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel21, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(txtAddress2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -1329,6 +1339,16 @@ public void resetTranxTable() {
             }
         });
 
+        jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel4.setText(AppLocal.getIntString("label.visible")); // NOI18N
+        jLabel4.setMaximumSize(new java.awt.Dimension(140, 25));
+        jLabel4.setMinimumSize(new java.awt.Dimension(140, 25));
+        jLabel4.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        m_jVisible.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        m_jVisible.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jVisible.setPreferredSize(new java.awt.Dimension(30, 30));
+
         javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
         jPanel6.setLayout(jPanel6Layout);
         jPanel6Layout.setHorizontalGroup(
@@ -1379,11 +1399,15 @@ public void resetTranxTable() {
                             .addComponent(m_jVip, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(jPanel6Layout.createSequentialGroup()
                                 .addComponent(jcard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(jBtnCreateCard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(jBtnClearCard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jBtnClearCard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-                .addContainerGap(49, Short.MAX_VALUE))
+                                .addComponent(m_jVisible, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                .addContainerGap(36, Short.MAX_VALUE))
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1416,27 +1440,41 @@ public void resetTranxTable() {
                         .addComponent(jLblDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(txtDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jLblDiscountpercent, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(18, 18, 18)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jcard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(8, 8, 8)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jBtnCreateCard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jBtnClearCard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jcard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jBtnClearCard, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(m_jVisible, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(15, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Properties", jPanel6);
 
-        jLabel4.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel4.setText(AppLocal.getIntString("label.visible")); // NOI18N
-        jLabel4.setMaximumSize(new java.awt.Dimension(140, 25));
-        jLabel4.setMinimumSize(new java.awt.Dimension(140, 25));
-        jLabel4.setPreferredSize(new java.awt.Dimension(150, 30));
+        txtFirstName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        txtFirstName.setPreferredSize(new java.awt.Dimension(300, 30));
 
-        m_jVisible.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-        m_jVisible.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        m_jVisible.setPreferredSize(new java.awt.Dimension(30, 30));
+        jLabel19.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel19.setText(AppLocal.getIntString("label.firstname")); // NOI18N
+        jLabel19.setAlignmentX(0.5F);
+        jLabel19.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        txtLastName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        txtLastName.setPreferredSize(new java.awt.Dimension(300, 30));
+
+        jLabel15.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel15.setText(AppLocal.getIntString("label.lastname")); // NOI18N
+        jLabel15.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        txtAddress.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        txtAddress.setPreferredSize(new java.awt.Dimension(300, 30));
+
+        jLabel13.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel13.setText(AppLocal.getIntString("label.address")); // NOI18N
+        jLabel13.setPreferredSize(new java.awt.Dimension(150, 30));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -1447,26 +1485,31 @@ public void resetTranxTable() {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(6, 6, 6)
-                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addComponent(jLabel15, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(jLabel19, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(jLabel7, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(m_jVisible, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel11, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(cbxIdentificationType, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(m_jName, javax.swing.GroupLayout.PREFERRED_SIZE, 414, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(m_jName, javax.swing.GroupLayout.DEFAULT_SIZE, 414, Short.MAX_VALUE)
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(m_jTaxID, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(m_jSearchkey, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-                .addContainerGap())
+                                .addComponent(m_jSearchkey, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(txtFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtAddress, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                .addContainerGap(271, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1483,15 +1526,23 @@ public void resetTranxTable() {
                     .addComponent(m_jSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(m_jName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(153, 153, 153)
+                    .addComponent(txtFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel19, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(m_jName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtAddress, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(45, 45, 45)
                 .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(m_jVisible, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                .addContainerGap(42, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 

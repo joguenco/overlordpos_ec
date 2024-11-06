@@ -56,6 +56,8 @@ public class CustomerInfoExt extends CustomerInfo {
     protected Double discount;
     protected String prepay;
     protected String memodate;
+    private Boolean isReadOnly = false;
+    protected String type;
 
     /** Creates a new instance of UserInfoBasic
      * @param id */
@@ -464,4 +466,23 @@ public class CustomerInfoExt extends CustomerInfo {
         return Formats.STRING.formatValue(memodate);
     }
 
+    public Boolean getIsReadOnly() {
+        return isReadOnly;
+    }
+
+    public void setIsReadOnly(Boolean isReadOnly) {
+        this.isReadOnly = isReadOnly;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+    
+    public String printEmail() {
+        return (cemail == null) ? "" : cemail;
+    }
 }

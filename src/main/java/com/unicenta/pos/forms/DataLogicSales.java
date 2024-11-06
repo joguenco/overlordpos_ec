@@ -27,6 +27,7 @@ import com.unicenta.format.Formats;
 import com.unicenta.pos.catalog.CategoryStock;
 import com.unicenta.pos.customers.CustomerInfoExt;
 import com.unicenta.pos.customers.CustomerTransaction;
+import com.unicenta.pos.customers.IdentificationTypeInfo;
 import com.unicenta.pos.inventory.*;
 import com.unicenta.pos.mant.FloorsInfo;
 import com.unicenta.pos.payment.PaymentInfo;
@@ -2828,5 +2829,23 @@ public class DataLogicSales extends BeanFactoryDataSingle {
         };
     }
 
+    public SentenceList getIdentificationTypeList() {
+        return new StaticSentence(s,
+                new QBFBuilder("select code, name from identification_type "
+                        + "where status = true "
+                        + "order by name",
+                        new String[]{"code", "name"}),
+                new SerializerWriteBasic(new Datas[]{
+            Datas.OBJECT, Datas.STRING,
+            Datas.OBJECT, Datas.STRING
+        }),
+                (DataRead dr) -> {
+                    var i = new IdentificationTypeInfo(
+                            dr.getString(1),
+                            dr.getString(2)
+                    );
 
+                    return i;
+                });
+    }
 }
