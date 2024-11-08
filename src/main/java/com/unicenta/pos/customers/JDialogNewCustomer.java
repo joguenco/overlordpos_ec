@@ -11,6 +11,7 @@ import com.unicenta.format.Formats;
 import com.unicenta.pos.forms.AppLocal;
 import com.unicenta.pos.forms.AppView;
 import com.unicenta.pos.forms.DataLogicSales;
+import dev.joguenco.identification.Validator;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Frame;
@@ -30,6 +31,8 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
     private TableDefinition tcustomers;
     private CustomerInfoExt selectedCustomer;
     private Object m_oId;
+    private SentenceList sentenceIdentificationType;
+    private ComboBoxValModel modelIdentificationType;
     
     /** Creates new form quick New Customer
      * @param parent */
@@ -50,6 +53,7 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
             dlCustomer = (DataLogicCustomers) app.getBean("com.unicenta.pos.customers.DataLogicCustomers");
             m_sentcat = dlSales.getTaxCustCategoriesList();
             tcustomers = dlCustomer.getTableCustomers();
+            sentenceIdentificationType = dlSales.getIdentificationTypeList();
 
             initComponents();        
 
@@ -60,6 +64,13 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
             m_CategoryModel = new ComboBoxValModel(a);
             m_jCategory.setModel(m_CategoryModel);      
             
+            modelIdentificationType = new ComboBoxValModel(
+                    sentenceIdentificationType.list());
+            cbxIdentificationType.setModel(modelIdentificationType);
+            modelIdentificationType.setSelectedFirst();
+
+            disableItems();
+            
             getRootPane().setDefaultButton(m_jBtnOK);
         } catch (BasicException ex) {
         }
@@ -67,15 +78,15 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
     
     
      public Object createValue() throws BasicException {
-        Object[] customer = new Object[27];
+        Object[] customer = new Object[28];
         customer[0] =  m_oId;        
-        customer[1] = m_jSearchkey.getText();
+        customer[1] = m_jTaxID.getText();//m_jSearchkey.getText();
         customer[2] = m_jTaxID.getText();
         customer[3] = m_jName.getText();
         customer[4] = m_CategoryModel.getSelectedKey();
         customer[5] = null;
         customer[6] = Formats.CURRENCY.parseValue(txtMaxdebt.getText(), 0.0);
-        customer[7] = null;
+        customer[7] = Formats.STRING.parseValue(txtAddress.getText());
         customer[8] = null;
         customer[9] = null;
         customer[10] = null;
@@ -95,6 +106,7 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
         customer[24] = m_jVip.isSelected();
         customer[25] = Formats.DOUBLE.parseValue(txtDiscount.getText());
         customer[26] = null;
+        customer[27] = modelIdentificationType.getSelectedKey();
         
         return customer;
     }
@@ -149,34 +161,39 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
     private void initComponents() {
 
         jPanel3 = new javax.swing.JPanel();
-        jLblName = new javax.swing.JLabel();
-        m_jName = new javax.swing.JTextField();
-        jLblSearchkey = new javax.swing.JLabel();
-        m_jSearchkey = new javax.swing.JTextField();
+        jLabel11 = new javax.swing.JLabel();
+        cbxIdentificationType = new javax.swing.JComboBox<>();
         jLblTaxID = new javax.swing.JLabel();
         m_jTaxID = new javax.swing.JTextField();
-        jLblCustTaxCat = new javax.swing.JLabel();
-        m_jCategory = new javax.swing.JComboBox();
-        jLblVIP = new javax.swing.JLabel();
-        m_jVip = new javax.swing.JCheckBox();
-        jLblDiscount = new javax.swing.JLabel();
-        txtDiscount = new javax.swing.JTextField();
-        jLblDiscountpercent = new javax.swing.JLabel();
         jLblFirstName = new javax.swing.JLabel();
         txtFirstName = new javax.swing.JTextField();
         jLblLastName = new javax.swing.JLabel();
         txtLastName = new javax.swing.JTextField();
+        jLblName = new javax.swing.JLabel();
+        m_jName = new javax.swing.JTextField();
+        jLabel13 = new javax.swing.JLabel();
+        txtAddress = new javax.swing.JTextField();
         jLblEmail = new javax.swing.JLabel();
         txtEmail = new javax.swing.JTextField();
         jLblTelephone1 = new javax.swing.JLabel();
         txtPhone = new javax.swing.JTextField();
         jLblTelephone2 = new javax.swing.JLabel();
         txtPhone2 = new javax.swing.JTextField();
-        jLabel1 = new javax.swing.JLabel();
-        txtMaxdebt = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
         m_jBtnOK = new javax.swing.JButton();
         m_jBtnCancel = new javax.swing.JButton();
+        jPanel1 = new javax.swing.JPanel();
+        jLblSearchkey = new javax.swing.JLabel();
+        m_jSearchkey = new javax.swing.JTextField();
+        jLabel1 = new javax.swing.JLabel();
+        txtMaxdebt = new javax.swing.JTextField();
+        jLblCustTaxCat = new javax.swing.JLabel();
+        m_jCategory = new javax.swing.JComboBox();
+        jLblDiscount = new javax.swing.JLabel();
+        txtDiscount = new javax.swing.JTextField();
+        jLblDiscountpercent = new javax.swing.JLabel();
+        jLblVIP = new javax.swing.JLabel();
+        m_jVip = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle(AppLocal.getIntString("label.customer")); // NOI18N
@@ -185,22 +202,13 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
 
         jPanel3.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 
-        jLblName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLblName.setText(AppLocal.getIntString("label.namem")); // NOI18N
-        jLblName.setMaximumSize(new java.awt.Dimension(140, 25));
-        jLblName.setMinimumSize(new java.awt.Dimension(140, 25));
-        jLblName.setPreferredSize(new java.awt.Dimension(150, 30));
+        jLabel11.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel11.setText(AppLocal.getIntString("label.identificationType")); // NOI18N
+        jLabel11.setMaximumSize(new java.awt.Dimension(150, 30));
+        jLabel11.setMinimumSize(new java.awt.Dimension(140, 25));
+        jLabel11.setPreferredSize(new java.awt.Dimension(150, 30));
 
-        m_jName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        m_jName.setPreferredSize(new java.awt.Dimension(300, 30));
-
-        jLblSearchkey.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLblSearchkey.setText(AppLocal.getIntString("label.searchkeym")); // NOI18N
-        jLblSearchkey.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        m_jSearchkey.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        m_jSearchkey.setHorizontalAlignment(javax.swing.JTextField.LEFT);
-        m_jSearchkey.setPreferredSize(new java.awt.Dimension(150, 30));
+        cbxIdentificationType.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 
         jLblTaxID.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLblTaxID.setText(AppLocal.getIntString("label.taxid")); // NOI18N
@@ -210,39 +218,6 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
 
         m_jTaxID.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         m_jTaxID.setPreferredSize(new java.awt.Dimension(100, 30));
-
-        jLblCustTaxCat.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLblCustTaxCat.setText(AppLocal.getIntString("label.custtaxcategory")); // NOI18N
-        jLblCustTaxCat.setMaximumSize(new java.awt.Dimension(140, 25));
-        jLblCustTaxCat.setMinimumSize(new java.awt.Dimension(140, 25));
-        jLblCustTaxCat.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        m_jCategory.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        m_jCategory.setPreferredSize(new java.awt.Dimension(0, 30));
-
-        jLblVIP.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLblVIP.setText(AppLocal.getIntString("label.vip")); // NOI18N
-        jLblVIP.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        m_jVip.setForeground(new java.awt.Color(0, 188, 243));
-        m_jVip.setPreferredSize(new java.awt.Dimension(21, 30));
-        m_jVip.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                m_jVipnone(evt);
-            }
-        });
-
-        jLblDiscount.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLblDiscount.setText(AppLocal.getIntString("label.discount")); // NOI18N
-        jLblDiscount.setPreferredSize(new java.awt.Dimension(55, 30));
-
-        txtDiscount.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        txtDiscount.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
-        txtDiscount.setPreferredSize(new java.awt.Dimension(50, 30));
-
-        jLblDiscountpercent.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLblDiscountpercent.setText("%");
-        jLblDiscountpercent.setPreferredSize(new java.awt.Dimension(12, 30));
 
         jLblFirstName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLblFirstName.setText(AppLocal.getIntString("label.firstname")); // NOI18N
@@ -258,6 +233,27 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
 
         txtLastName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         txtLastName.setPreferredSize(new java.awt.Dimension(200, 30));
+
+        jLblName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLblName.setText(AppLocal.getIntString("label.namem")); // NOI18N
+        jLblName.setMaximumSize(new java.awt.Dimension(140, 25));
+        jLblName.setMinimumSize(new java.awt.Dimension(140, 25));
+        jLblName.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        m_jName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jName.setPreferredSize(new java.awt.Dimension(300, 30));
+        m_jName.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                m_jNameFocusGained(evt);
+            }
+        });
+
+        jLabel13.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel13.setText(AppLocal.getIntString("label.address")); // NOI18N
+        jLabel13.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        txtAddress.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        txtAddress.setPreferredSize(new java.awt.Dimension(300, 30));
 
         jLblEmail.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         jLblEmail.setText(AppLocal.getIntString("label.email")); // NOI18N
@@ -280,16 +276,6 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
         txtPhone2.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         txtPhone2.setPreferredSize(new java.awt.Dimension(200, 30));
 
-        jLabel1.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        jLabel1.setText(AppLocal.getIntString("label.maxdebt")); // NOI18N
-        jLabel1.setMaximumSize(new java.awt.Dimension(140, 25));
-        jLabel1.setMinimumSize(new java.awt.Dimension(140, 25));
-        jLabel1.setPreferredSize(new java.awt.Dimension(150, 30));
-
-        txtMaxdebt.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        txtMaxdebt.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
-        txtMaxdebt.setPreferredSize(new java.awt.Dimension(100, 30));
-
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
@@ -298,103 +284,80 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLblEmail, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLblTelephone1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLblTelephone2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jLblTelephone2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtEmail, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtPhone, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtPhone2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(txtPhone2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLblFirstName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLblLastName, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jLblLastName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(txtLastName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtLastName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtFirstName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel3Layout.createSequentialGroup()
+                            .addGroup(jPanel3Layout.createSequentialGroup()
+                                .addComponent(jLblFirstName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(txtFirstName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanel3Layout.createSequentialGroup()
                                 .addComponent(jLblName, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(m_jName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(jPanel3Layout.createSequentialGroup()
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanel3Layout.createSequentialGroup()
-                                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLblCustTaxCat, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(jLblVIP, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(m_jCategory, javax.swing.GroupLayout.PREFERRED_SIZE, 163, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                                .addComponent(m_jVip, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                                .addComponent(jLblDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(txtDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(jLblDiscountpercent, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                            .addComponent(m_jSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                    .addComponent(jLblSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                    .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 1, Short.MAX_VALUE)
-                                    .addComponent(jLblTaxID, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 140, Short.MAX_VALUE))))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(m_jTaxID, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtMaxdebt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                    .addComponent(jLblTaxID, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(12, 12, 12)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(cbxIdentificationType, 0, 200, Short.MAX_VALUE)
+                                    .addComponent(m_jTaxID, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addGroup(jPanel3Layout.createSequentialGroup()
+                            .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLblEmail, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLblTelephone1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(jLabel13, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                            .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(txtEmail, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtAddress, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtPhone, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                .addContainerGap(272, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLblName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(m_jName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(cbxIdentificationType, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLblSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(m_jSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLblTaxID, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(m_jTaxID, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLblCustTaxCat, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(m_jCategory, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtMaxdebt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jLblVIP, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLblDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLblDiscountpercent, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addComponent(m_jVip, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLblFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addComponent(jLblFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(4, 4, 4)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLblLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(txtLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLblEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLblName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(m_jName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLblTelephone1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtPhone, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(txtAddress, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLblEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtPhone, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLblTelephone1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(59, 59, 59)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLblTelephone2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(txtPhone2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -437,14 +400,131 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
 
         getContentPane().add(jPanel2, java.awt.BorderLayout.SOUTH);
 
-        setSize(new java.awt.Dimension(651, 455));
+        jLblSearchkey.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLblSearchkey.setText(AppLocal.getIntString("label.searchkeym")); // NOI18N
+        jLblSearchkey.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        m_jSearchkey.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jSearchkey.setHorizontalAlignment(javax.swing.JTextField.LEFT);
+        m_jSearchkey.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        jLabel1.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLabel1.setText(AppLocal.getIntString("label.maxdebt")); // NOI18N
+        jLabel1.setMaximumSize(new java.awt.Dimension(140, 25));
+        jLabel1.setMinimumSize(new java.awt.Dimension(140, 25));
+        jLabel1.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        txtMaxdebt.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        txtMaxdebt.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
+        txtMaxdebt.setPreferredSize(new java.awt.Dimension(100, 30));
+
+        jLblCustTaxCat.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLblCustTaxCat.setText(AppLocal.getIntString("label.custtaxcategory")); // NOI18N
+        jLblCustTaxCat.setMaximumSize(new java.awt.Dimension(140, 25));
+        jLblCustTaxCat.setMinimumSize(new java.awt.Dimension(140, 25));
+        jLblCustTaxCat.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        m_jCategory.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jCategory.setPreferredSize(new java.awt.Dimension(0, 30));
+
+        jLblDiscount.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLblDiscount.setText(AppLocal.getIntString("label.discount")); // NOI18N
+        jLblDiscount.setPreferredSize(new java.awt.Dimension(55, 30));
+
+        txtDiscount.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        txtDiscount.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
+        txtDiscount.setPreferredSize(new java.awt.Dimension(50, 30));
+
+        jLblDiscountpercent.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLblDiscountpercent.setText("%");
+        jLblDiscountpercent.setPreferredSize(new java.awt.Dimension(12, 30));
+
+        jLblVIP.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jLblVIP.setText(AppLocal.getIntString("label.vip")); // NOI18N
+        jLblVIP.setPreferredSize(new java.awt.Dimension(150, 30));
+
+        m_jVip.setForeground(new java.awt.Color(0, 188, 243));
+        m_jVip.setPreferredSize(new java.awt.Dimension(21, 30));
+        m_jVip.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                m_jVipnone(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLblSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(m_jSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtMaxdebt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(36, 36, 36)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLblCustTaxCat, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(m_jCategory, javax.swing.GroupLayout.PREFERRED_SIZE, 163, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLblDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLblDiscountpercent, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLblVIP, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(m_jVip, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(60, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(14, 14, 14)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLblSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(m_jSearchkey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLblCustTaxCat, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(m_jCategory, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtMaxdebt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLblDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtDiscount, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLblDiscountpercent, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLblVIP, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(m_jVip, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(26, Short.MAX_VALUE))
+        );
+
+        getContentPane().add(jPanel1, java.awt.BorderLayout.CENTER);
+
+        setSize(new java.awt.Dimension(740, 568));
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
     private void m_jBtnOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jBtnOKActionPerformed
+        final var validator = new Validator();
+        final var identificationType = (String) modelIdentificationType.getSelectedKey();
+        final var identification = m_jTaxID.getText();
 
-        if ("".equals(m_jSearchkey.getText())
-                || "".equals(m_jName.getText())) {
+        final var error = validator.identification(identificationType, identification);
+        if (error.getIsError()) {
+            JOptionPane.showMessageDialog(
+                    null,
+                    error.getMessage(),
+                    "Identificación Cliente",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        else if ("".equals(m_jName.getText())
+                || "".equals(txtAddress.getText())) {
             JOptionPane.showMessageDialog(
                 null, 
                     AppLocal.getIntString("message.customercheck"), 
@@ -480,13 +560,39 @@ public class JDialogNewCustomer extends javax.swing.JDialog {
         
     }//GEN-LAST:event_m_jBtnCancelActionPerformed
 
+    private void disableItems() {
+        jLblSearchkey.setVisible(false);
+        m_jSearchkey.setVisible(false);
+        jLabel1.setVisible(false);
+        txtMaxdebt.setVisible(false);
+        jLblDiscount.setVisible(false);
+        txtDiscount.setVisible(false);
+        jLblDiscount.setVisible(false);
+        jLblVIP.setVisible(false);
+        m_jVip.setVisible(false);
+        jLblCustTaxCat.setVisible(false);
+        m_jCategory.setVisible(false);
+        jLblDiscountpercent.setVisible(false);
+        jLblTelephone2.setVisible(false);
+        txtPhone2.setVisible(false);
+    }
+    
 private void m_jVipnone(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_m_jVipnone
 
 }//GEN-LAST:event_m_jVipnone
+
+    private void m_jNameFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_m_jNameFocusGained
+        if (m_jName.getText().isEmpty()) {
+            m_jName.setText(txtFirstName.getText() + " " + txtLastName.getText());
+        }
+    }//GEN-LAST:event_m_jNameFocusGained
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JComboBox<String> cbxIdentificationType;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLblCustTaxCat;
     private javax.swing.JLabel jLblDiscount;
     private javax.swing.JLabel jLblDiscountpercent;
@@ -499,6 +605,7 @@ private void m_jVipnone(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_m_
     private javax.swing.JLabel jLblTelephone1;
     private javax.swing.JLabel jLblTelephone2;
     private javax.swing.JLabel jLblVIP;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JButton m_jBtnCancel;
@@ -508,6 +615,7 @@ private void m_jVipnone(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_m_
     private javax.swing.JTextField m_jSearchkey;
     private javax.swing.JTextField m_jTaxID;
     private javax.swing.JCheckBox m_jVip;
+    private javax.swing.JTextField txtAddress;
     private javax.swing.JTextField txtDiscount;
     private javax.swing.JTextField txtEmail;
     private javax.swing.JTextField txtFirstName;
