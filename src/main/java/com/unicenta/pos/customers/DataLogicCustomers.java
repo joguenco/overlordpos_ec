@@ -25,6 +25,8 @@ import com.unicenta.format.Formats;
 import com.unicenta.pos.forms.AppLocal;
 import com.unicenta.pos.forms.BeanFactoryDataSingle;
 import com.unicenta.pos.voucher.VoucherInfo;
+import dev.joguenco.utils.ExtractNames;
+import java.util.UUID;
 
 /**
  * @author JG uniCenta
@@ -382,4 +384,206 @@ public class DataLogicCustomers extends BeanFactoryDataSingle {
 		, VoucherInfo.getSerializerRead()).find(id);
     }    
           
+    public final int countCustomerByTaxId(String taxId) throws BasicException {
+        return (int) new PreparedSentence(s,
+                "SELECT count(*) "
+                + "FROM customers "
+                + "WHERE TAXID = ?",
+                SerializerWriteString.INSTANCE, (DataRead dr) -> {
+                    int count = dr.getInt(1);
+                    return count;
+                }).find(taxId);
+    }
+    
+    public final CustomerInfoBasic getCustomerByTaxId(String taxId) throws BasicException {
+        return (CustomerInfoBasic) new PreparedSentence(s,
+                "SELECT "
+                + "ID, TAXID, SEARCHKEY, TAXID_TYPE ,NAME, ADDRESS, PHONE, EMAIL "
+                + "FROM customers "
+                + "WHERE TAXID = ?",
+                SerializerWriteString.INSTANCE, (DataRead dr) -> {
+                    CustomerInfoBasic c = new CustomerInfoBasic(dr.getString(1));
+                    c.setTaxid(dr.getString(2));
+                    c.setSearchkey(dr.getString(3));
+                    c.setType(dr.getString(4));
+                    c.setName(dr.getString(5));
+                    c.setAddress(dr.getString(6));
+                    c.setPhone(dr.getString(7));
+                    c.setEmail(dr.getString(8));
+                    return c;
+                }).find(taxId);
+    }
+    
+    public final int countCustomerByTaxIdAndTaxIdType(String taxId, String taxIdType) throws BasicException {
+        return (int) new PreparedSentence(s,
+                "SELECT count(*) "
+                + "FROM customers "
+                + "WHERE TAXID = ? "
+                + "AND TAXID_TYPE = ?",
+                SerializerWriteString.INSTANCE, (DataRead dr) -> {
+                    int count = dr.getInt(1);
+                    return count;
+                }).find(taxId, taxIdType);
+    }
+    
+    public final Double maxValueInSaleWhenIsFinalConsumer(String taxId) throws BasicException {
+        return (Double) new PreparedSentence(s,
+                "select maxdebt from customers "
+                + "where taxid = ?",
+                SerializerWriteString.INSTANCE, (DataRead dr) -> {
+                    return dr.getDouble(1);
+                }).find(taxId);
+    }
+
+    public int saveCustomer(final CustomerInfoBasic customer) throws BasicException {
+        ExtractNames extract = new ExtractNames();
+        String lastName = extract.extractLastName(customer.getName().trim());
+        String firstName = extract.extractFirstName(customer.getName().trim());
+
+        return new PreparedSentence(s,
+                "INSERT INTO customers "
+                + "(id,searchkey,taxid,name,maxdebt,address,taxid_type,firstname,lastname,notes,visible,isvip,discount,email,phone) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                SerializerWriteParams.INSTANCE
+        ).exec(new DataParams() {
+            @Override
+            public void writeValues() throws BasicException {
+                setString(1, UUID.randomUUID().toString());
+                setString(2, customer.getTaxid());
+                setString(3, customer.getTaxid());
+                setString(4, customer.getName());
+                setInt(5, 0);
+                setString(6, customer.getAddress());
+                setString(7, customer.getType());
+                setString(8, firstName);
+                setString(9, lastName);
+                setString(10, "");
+                setInt(11, 1);
+                setInt(12, 0);
+                setInt(13, 0);
+                setString(14, customer.getEmail());
+                setString(15, customer.getPhone());
+            }
+        });
+    }
+
+    public int updateCustomer(final CustomerInfoBasic customer) throws BasicException {
+        ExtractNames extract = new ExtractNames();
+        String lastName = extract.extractLastName(customer.getName().trim());
+        String firstName = extract.extractFirstName(customer.getName().trim());
+
+        return new PreparedSentence(s,
+                "update customers "
+                + "set name = ?, address = ?, firstname = ?, lastname =? ,email = ?, phone =? "
+                + "where id = ?",
+                SerializerWriteParams.INSTANCE
+        ).exec(new DataParams() {
+            @Override
+            public void writeValues() throws BasicException {
+                setString(1, customer.getName());
+                setString(2, customer.getAddress());
+                setString(3, firstName);
+                setString(4, lastName);
+                setString(5, customer.getEmail());
+                setString(6, customer.getPhone());
+                setString(7, customer.getId());
+            }
+        });
+    }
+    
+    public CustomerInfoExt loadCustomerExtTaxByIdAndTaxIdType(String taxId, String taxIdType) throws BasicException {
+        return (CustomerInfoExt) new PreparedSentence(s,
+                "SELECT "
+                + "ID, "
+                + "SEARCHKEY, "
+                + "TAXID, "
+                + "NAME, "
+                + "TAXCATEGORY, "
+                + "CARD, "
+                + "MAXDEBT, "
+                + "ADDRESS, "
+                + "ADDRESS2, "
+                + "POSTAL, "
+                + "CITY, "
+                + "REGION, "
+                + "COUNTRY, "
+                + "FIRSTNAME, "
+                + "LASTNAME, "
+                + "EMAIL, "
+                + "PHONE, "
+                + "PHONE2, "
+                + "FAX, "
+                + "NOTES, "
+                + "VISIBLE, "
+                + "CURDATE, "
+                + "CURDEBT, "
+                + "IMAGE, "
+                + "ISVIP, "
+                + "DISCOUNT, "
+                + "MEMODATE, "
+                + "TAXID_TYPE "
+                + "FROM customers "
+                + "WHERE TAXID = ? "
+                + "AND TAXID_TYPE = ?",
+                SerializerWriteString.INSTANCE,
+                (DataRead dr) -> {
+                    CustomerInfoExt c = new CustomerInfoExt(dr.getString(1));
+                    c.setSearchkey(dr.getString(2));
+                    c.setTaxid(dr.getString(3));
+                    c.setTaxCustomerID(dr.getString(3));
+                    c.setName(dr.getString(4));
+                    c.setTaxCustCategoryID(dr.getString(5));
+                    c.setCard(dr.getString(6));
+                    c.setMaxdebt(dr.getDouble(7));
+                    c.setAddress(dr.getString(8));
+                    c.setAddress2(dr.getString(9));
+                    c.setPcode(dr.getString(10));
+                    c.setCity(dr.getString(11));
+                    c.setRegion(dr.getString(12));
+                    c.setCountry(dr.getString(13));
+                    c.setFirstname(dr.getString(14));
+                    c.setLastname(dr.getString(15));
+                    c.setCemail(dr.getString(16));
+                    c.setPhone1(dr.getString(17));
+                    c.setPhone2(dr.getString(18));
+                    c.setFax(dr.getString(19));
+                    c.setNotes(dr.getString(20));
+                    c.setVisible(dr.getBoolean(21));
+                    c.setCurdate(dr.getTimestamp(22));
+                    c.setAccdebt(dr.getDouble(23));
+                    c.setImage(ImageUtils.readImage(dr.getString(24)));
+                    c.setisVIP(dr.getBoolean(25));
+                    c.setDiscount(dr.getDouble(26));
+                    c.setMemoDate(dr.getString(27));
+                    c.setType(dr.getString(28));
+
+                    return c;
+                }).find(taxId, taxIdType);
+    }
+    
+    /**
+     * Return customer data basic
+     *
+     * @param id customes
+     * @return CustomerInfoBasic
+     * @throws BasicException
+     */
+    public final CustomerInfoBasic getCustomerById(String customerId) throws BasicException {
+        return (CustomerInfoBasic) new PreparedSentence(s,
+                "SELECT "
+                + "ID, TAXID, SEARCHKEY, TAXID_TYPE ,NAME, ADDRESS, PHONE, EMAIL "
+                + "FROM customers "
+                + "WHERE ID = ?",
+                SerializerWriteString.INSTANCE, (DataRead dr) -> {
+                    CustomerInfoBasic c = new CustomerInfoBasic(dr.getString(1));
+                    c.setTaxid(dr.getString(2));
+                    c.setSearchkey(dr.getString(3));
+                    c.setType(dr.getString(4));
+                    c.setName(dr.getString(5));
+                    c.setAddress(dr.getString(6));
+                    c.setPhone(dr.getString(7));
+                    c.setEmail(dr.getString(8));
+                    return c;
+                }).find(customerId);
+    }
 }

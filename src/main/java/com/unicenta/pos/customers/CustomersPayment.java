@@ -625,7 +625,7 @@ public class CustomersPayment extends javax.swing.JPanel implements JPanelView, 
 
         paymentdialog.setPrintSelected(true);
         
-        if (paymentdialog.showDialog(customerext.getAccdebt(), null)) {
+        if (paymentdialog.showDialog(customerext.getAccdebt(), customerext, "")) {
 
             // Save the ticket
             TicketInfo ticket = new TicketInfo();
@@ -703,7 +703,7 @@ public class CustomersPayment extends javax.swing.JPanel implements JPanelView, 
             Formats.CURRENCY.formatValue(RoundUtils.getValue(prepay));
             paymentdialog.setPrintSelected(true);
         
-            if (paymentdialog.showDialog(prepay, null)) {            
+            if (paymentdialog.showDialog(prepay, null, "")) {            
            
                 TicketInfo ticket = new TicketInfo();
                 ticket.setTicketType(TicketInfo.RECEIPT_PAYMENT);

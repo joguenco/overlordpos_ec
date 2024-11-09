@@ -19,13 +19,21 @@
 
 package com.unicenta.pos.payment;
 
+import com.unicenta.basic.BasicException;
+import com.unicenta.data.gui.ComboBoxValModel;
+import com.unicenta.data.loader.SentenceList;
 import com.unicenta.format.Formats;
+import com.unicenta.pos.customers.CustomerInfoBasic;
 import com.unicenta.pos.customers.CustomerInfoExt;
 import com.unicenta.pos.customers.DataLogicCustomers;
 import com.unicenta.pos.forms.AppLocal;
 import com.unicenta.pos.forms.AppView;
 import com.unicenta.pos.forms.DataLogicSales;
 import com.unicenta.pos.forms.DataLogicSystem;
+import dev.joguenco.error.ErrorMessage;
+import dev.joguenco.identification.Validator;
+import dev.joguenco.pos.establishment.DataLogicEstablishment;
+import dev.joguenco.pos.establishment.EstablishmentInfo;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -33,12 +41,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.WordUtils;
 
 /**
  *
  * @author adrianromero
  */
+@Slf4j
 public abstract class JPaymentSelect extends javax.swing.JDialog
         implements JPaymentNotifier {
 
@@ -58,6 +70,20 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
     private Map<String, JPaymentInterface> payments = new HashMap<>();
     private String m_sTransactionID;
     private static PaymentInfo returnPayment = null;
+    private String cityWhenAddressIsEmpty = "";
+    // For identification type combobox 
+    private SentenceList sentenceIdentificationType;
+    private ComboBoxValModel modelIdentificationType;
+    private String ticketType = "";
+    private String customerDefault;
+
+    public CustomerInfoExt getCustomerext() {
+        return customerext;
+    }
+
+    public String getTicketType() {
+        return ticketType;
+    }
 
     public static PaymentInfo getReturnPayment() {
         return returnPayment;
@@ -106,6 +132,8 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         dlCustomers= (DataLogicCustomers) app.getBean("com.unicenta.pos.customers.DataLogicCustomers");
         dlSales = (DataLogicSales) app.getBean("com.unicenta.pos.forms.DataLogicSales");
 
+        txtIdentification.setFocusTraversalKeysEnabled(false);
+        
         printselected = false;
         if (printselected) {
             jlblPrinterStatus.setText("Printer ON");
@@ -149,9 +177,21 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         return accepted;
     }
 
-    public boolean showDialog(double total, CustomerInfoExt customerext) {
+    public boolean showDialog(double total, CustomerInfoExt customerext, String serie) {
 
         m_aPaymentInfo = new PaymentInfoList();
+        dlSales = (DataLogicSales) app.getBean("com.unicenta.pos.forms.DataLogicSales");
+
+        sentenceIdentificationType = dlSales.getIdentificationTypeList();
+        try {
+            modelIdentificationType = new ComboBoxValModel(
+                    sentenceIdentificationType.list());
+            cbxIdentificationType.setModel(modelIdentificationType);
+
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+        }
+
         accepted = false;
 
         m_dTotal = total;
@@ -161,6 +201,48 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         setPrintSelected(!Boolean.parseBoolean(app.getProperties().getProperty("till.receiptprintoff")));
         m_jButtonPrint.setSelected(printselected);
         m_jTotalEuros.setText(Formats.CURRENCY.formatValue(m_dTotal));
+
+        // Get customer from JPanelTicket finder
+        if (this.customerext != null && existCustomer(this.customerext.getTaxid())) {
+            CustomerInfoBasic customer = getCustomerById(this.customerext.getId());
+
+            if (customer.getType().equals("CF")) {
+                requestFinalConsumer();
+                modelIdentificationType.setSelectedKey("CF");
+            } else {
+                requestIdentification();
+                txtIdentification.setText(customer.getTaxid());
+                modelIdentificationType.setSelectedKey(customer.getType());
+                txtName.setText(customer.getName());
+                txtEmail.setText(customer.getEmail());
+                txtAddress.setText(customer.getAddress());
+                txtPhone.setText(customer.getPhone());
+
+                m_jButtonOK.requestFocus();
+            }
+            // If customer is read only, disable form
+            if (customerext.getIsReadOnly()) {
+
+                txtIdentification.setEditable(false);
+                txtName.setEditable(false);
+                txtEmail.setEditable(false);
+                txtAddress.setEditable(false);
+                txtPhone.setEditable(false);
+            }
+        } else {
+            requestFinalConsumer();
+            modelIdentificationType.setSelectedKey("00");
+        }
+
+        if (txtAddress.getText().isEmpty()) {
+            if (serie.length() >= 3) {
+                setAddressWhenIsEmpty(serie.substring(0, 3));
+            } else {
+                setAddressWhenIsEmpty(serie);
+            }
+        }
+        
+        cmdUnderground.setSelected(false);
 
         if (printselected) {
             jlblPrinterStatus.setText("Printer ON");
@@ -452,6 +534,29 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
             return "/com/unicenta/images/slip.png";
         }
     }
+    
+    public class JPaymentDeunaCreator implements JPaymentCreator {
+
+        @Override
+        public JPaymentInterface createJPayment() {
+            return new JPaymentDeuna(JPaymentSelect.this);
+        }
+
+        @Override
+        public String getKey() {
+            return "payment.deuna";
+        }
+
+        @Override
+        public String getLabelKey() {
+            return "tab.deuna";
+        }
+
+        @Override
+        public String getIconKey() {
+            return "/com/unicenta/images/cheque.png";
+        }
+    }
 
     private void printState() {
 
@@ -505,10 +610,25 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         m_jTabPayment = new javax.swing.JTabbedPane();
         jPanel5 = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
+        cmdUnderground = new javax.swing.JToggleButton();
         m_jButtonCancel = new javax.swing.JButton();
         m_jButtonOK = new javax.swing.JButton();
         m_jButtonPrint = new javax.swing.JToggleButton();
         jlblPrinterStatus = new javax.swing.JLabel();
+        tabData = new javax.swing.JTabbedPane();
+        jPanel1 = new javax.swing.JPanel();
+        txtType = new javax.swing.JLabel();
+        txtPhone = new javax.swing.JTextField();
+        cbxIdentificationType = new javax.swing.JComboBox<>();
+        lblIdentification = new javax.swing.JLabel();
+        txtIdentification = new javax.swing.JTextField();
+        lblName = new javax.swing.JLabel();
+        txtName = new javax.swing.JTextField();
+        lblEmail = new javax.swing.JLabel();
+        txtEmail = new javax.swing.JTextField();
+        lblAddress = new javax.swing.JLabel();
+        txtAddress = new javax.swing.JTextField();
+        lblPhone = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle(AppLocal.getIntString("payment.title")); // NOI18N
@@ -562,42 +682,42 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         org.jdesktop.layout.GroupLayout jPanel4Layout = new org.jdesktop.layout.GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
         jPanel4Layout.setHorizontalGroup(
-                jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                        .add(jPanel4Layout.createSequentialGroup()
-                                .add(5, 5, 5)
-                                .add(m_jLblTotalEuros1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                                .add(m_jTotalEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                                .add(jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                        .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(jPanel4Layout.createSequentialGroup()
-                                                .add(m_jLblRemainingEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 120, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                                                .add(m_jRemaininglEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                                .add(18, 18, 18)
-                                .add(m_jButtonAdd, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                                .add(m_jButtonRemove, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .add(4, 4, 4))
+            jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel4Layout.createSequentialGroup()
+                .add(5, 5, 5)
+                .add(m_jLblTotalEuros1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(m_jTotalEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jPanel4Layout.createSequentialGroup()
+                        .add(m_jLblRemainingEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 120, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(m_jRemaininglEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                .add(18, 18, 18)
+                .add(m_jButtonAdd, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(m_jButtonRemove, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(4, 4, 4))
         );
         jPanel4Layout.setVerticalGroup(
-                jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                        .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel4Layout.createSequentialGroup()
-                                .add(0, 0, Short.MAX_VALUE)
-                                .add(jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                        .add(org.jdesktop.layout.GroupLayout.TRAILING, m_jButtonRemove, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(org.jdesktop.layout.GroupLayout.TRAILING, m_jButtonAdd, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                        .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel4Layout.createSequentialGroup()
-                                .add(5, 5, 5)
-                                .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                                .add(jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                        .add(m_jLblTotalEuros1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(m_jRemaininglEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(m_jLblRemainingEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(m_jTotalEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap())
+            jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel4Layout.createSequentialGroup()
+                .add(0, 0, Short.MAX_VALUE)
+                .add(jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, m_jButtonRemove, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, m_jButtonAdd, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel4Layout.createSequentialGroup()
+                .add(5, 5, 5)
+                .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(m_jLblTotalEuros1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(m_jRemaininglEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(m_jLblRemainingEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(m_jTotalEuros, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
 
         getContentPane().add(jPanel4, java.awt.BorderLayout.NORTH);
@@ -624,6 +744,15 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         getContentPane().add(jPanel3, java.awt.BorderLayout.CENTER);
 
         jPanel5.setLayout(new java.awt.BorderLayout());
+
+        cmdUnderground.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/pig.png"))); // NOI18N
+        cmdUnderground.setPreferredSize(new java.awt.Dimension(110, 45));
+        cmdUnderground.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmdUndergroundActionPerformed(evt);
+            }
+        });
+        jPanel2.add(cmdUnderground);
 
         m_jButtonCancel.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         m_jButtonCancel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/cancel.png"))); // NOI18N
@@ -679,9 +808,138 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         jlblPrinterStatus.setText(bundle.getString("label.printerstatusOn")); // NOI18N
         jPanel5.add(jlblPrinterStatus, java.awt.BorderLayout.CENTER);
 
+        txtType.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        txtType.setText("Tipo");
+
+        txtPhone.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
+
+        cbxIdentificationType.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
+        cbxIdentificationType.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                cbxIdentificationTypeFocusGained(evt);
+            }
+        });
+        cbxIdentificationType.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cbxIdentificationTypeActionPerformed(evt);
+            }
+        });
+
+        lblIdentification.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        lblIdentification.setText("Identificación");
+
+        txtIdentification.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
+        txtIdentification.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                txtIdentificationFocusGained(evt);
+            }
+        });
+        txtIdentification.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtIdentificationActionPerformed(evt);
+            }
+        });
+
+        lblName.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        lblName.setText("Razón Social");
+
+        txtName.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
+        txtName.setToolTipText("Apellido Nombre");
+        txtName.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                txtNameFocusGained(evt);
+            }
+        });
+        txtName.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtNameActionPerformed(evt);
+            }
+        });
+
+        lblEmail.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        lblEmail.setText("Email");
+
+        txtEmail.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
+        txtEmail.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtEmailActionPerformed(evt);
+            }
+        });
+
+        lblAddress.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        lblAddress.setText("Dirección");
+
+        txtAddress.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
+        txtAddress.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtAddressActionPerformed(evt);
+            }
+        });
+
+        lblPhone.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        lblPhone.setText("Tel.");
+
+        org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(lblName)
+                    .add(lblAddress)
+                    .add(lblIdentification))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                    .add(txtName, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 333, Short.MAX_VALUE)
+                    .add(txtAddress)
+                    .add(txtIdentification))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(lblEmail)
+                    .add(txtType)
+                    .add(lblPhone))
+                .add(4, 4, 4)
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, cbxIdentificationType, 0, 296, Short.MAX_VALUE)
+                    .add(txtEmail)
+                    .add(txtPhone))
+                .addContainerGap())
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel1Layout.createSequentialGroup()
+                .add(10, 10, 10)
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(txtIdentification, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(txtType)
+                    .add(lblIdentification)
+                    .add(cbxIdentificationType, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jPanel1Layout.createSequentialGroup()
+                        .add(42, 42, 42)
+                        .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(txtPhone, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(lblPhone)
+                            .add(txtAddress, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                    .add(jPanel1Layout.createSequentialGroup()
+                        .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(txtName, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(lblName)
+                            .add(lblEmail)
+                            .add(txtEmail, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(lblAddress)))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        tabData.addTab("Cliente", jPanel1);
+
+        jPanel5.add(tabData, java.awt.BorderLayout.PAGE_START);
+
         getContentPane().add(jPanel5, java.awt.BorderLayout.SOUTH);
 
-        setSize(new java.awt.Dimension(758, 497));
+        setSize(new java.awt.Dimension(820, 730));
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
@@ -707,19 +965,96 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
     private void m_jTabPaymentStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_m_jTabPaymentStateChanged
 
         if (m_jTabPayment.getSelectedComponent() != null) {
-            ((JPaymentInterface) m_jTabPayment.getSelectedComponent())
-                    .activate(customerext
-                            , m_dTotal - m_aPaymentInfo.getTotal()
-                            , m_sTransactionID);
-            m_jRemaininglEuros.setText(
-                    Formats.CURRENCY.formatValue(
-                            m_dTotal - m_aPaymentInfo.getTotal()));
+            if ("9999999999999".equals(txtIdentification.getText())) {
+                final var tab = (JPaymentInterface) m_jTabPayment.getSelectedComponent();
+
+                if (JPaymentCashPos.class == tab.getComponent().getClass()) {
+                    ((JPaymentInterface) m_jTabPayment.getSelectedComponent())
+                            .activate(customerext,
+                                    m_dTotal - m_aPaymentInfo.getTotal(),
+                                    m_sTransactionID);
+                    m_jRemaininglEuros.setText(
+                            Formats.CURRENCY.formatValue(
+                                    m_dTotal - m_aPaymentInfo.getTotal()));
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "El Consumidor Final solo puede facturar en efectivo",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                    setOKEnabled(false);
+                }
+            } else {
+                ((JPaymentInterface) m_jTabPayment.getSelectedComponent())
+                        .activate(customerext
+                                , m_dTotal - m_aPaymentInfo.getTotal()
+                                , m_sTransactionID);
+                m_jRemaininglEuros.setText(
+                        Formats.CURRENCY.formatValue(
+                                m_dTotal - m_aPaymentInfo.getTotal()));
+            }
         }
 
     }//GEN-LAST:event_m_jTabPaymentStateChanged
 
     private void m_jButtonOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jButtonOKActionPerformed
+        if (cmdUnderground.isSelected()) {
+            ticketType = "EV";
+            executePayment();
+        } else {
+            ticketType = "FV";
+            executePayment();
+        }
+    }//GEN-LAST:event_m_jButtonOKActionPerformed
 
+    private void executePayment() {
+        if (isBlank(txtIdentification.getText(), "Es necesario ingresar un valor en la identificación")) {
+            return;
+        }
+
+        if (isBlank(txtName.getText(), "Es necesario ingresar un valor en la razón social")) {
+            return;
+        }
+
+        if (isBlank(txtAddress.getText(), "Es necesario ingresar un valor en la dirección")) {
+            return;
+        }
+
+        if (modelIdentificationType.getSelectedText().equals("Consumidor Final")) {
+            if (!isValidAmountToFinalConsumer()) {
+                JOptionPane.showMessageDialog(this,
+                        "El monto a facturar no es válido para Consumidor Final",
+                        "Advertencia",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        }
+
+        if (!existCustomerByTaxIdAndTaxIdType(txtIdentification.getText(),
+                modelIdentificationType.getSelectedKey().toString())) {
+            saveCustomer();
+        }
+
+        try {
+            customerext = dlCustomers
+                    .loadCustomerExtTaxByIdAndTaxIdType(
+                            txtIdentification.getText(),
+                            modelIdentificationType.getSelectedKey().toString());
+
+            if (!txtName.getText().equals(customerext.getName())
+                    || !txtEmail.getText().equals(customerext.getCemail())
+                    || !txtAddress.getText().equals(customerext.getAddress())
+                    || !txtPhone.getText().equals(customerext.getPhone1())) {
+                updateCustomer();
+            }
+
+        } catch (BasicException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al recuperar el cliente de la base de datos",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
         SwingWorker worker = new SwingWorker() {
             @Override
             protected Object doInBackground() throws Exception {
@@ -741,8 +1076,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         };
 
         worker.execute();
-    }//GEN-LAST:event_m_jButtonOKActionPerformed
-
+    }
     private void m_jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jButtonCancelActionPerformed
 
         dispose();
@@ -766,13 +1100,398 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         }
     }//GEN-LAST:event_m_jTabPaymentKeyPressed
 
+    private void cbxIdentificationTypeFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_cbxIdentificationTypeFocusGained
+        if (!txtIdentification.getText().isEmpty()) {
+            final var validator = new Validator();
+
+            switch (txtIdentification.getText().length()) {
+                case 10: {
+                    final var error = validator.identification("C",
+                        txtIdentification.getText()
+                    );
+                    if (error.getIsError()) {
+                        modelIdentificationType.setSelectedKey("IE");
+                    } else {
+                        modelIdentificationType.setSelectedKey("C");
+                    }
+                    break;
+                }
+                case 13: {
+                    final var error = validator.identification("R",
+                        txtIdentification.getText()
+                    );
+                    if (error.getIsError()) {
+                        modelIdentificationType.setSelectedKey("IE");
+                    } else {
+                        modelIdentificationType.setSelectedKey("R");
+                    }
+                    break;
+                }
+                default:
+                modelIdentificationType.setSelectedKey("IE");
+                break;
+            }
+        }
+    }//GEN-LAST:event_cbxIdentificationTypeFocusGained
+
+    private void cbxIdentificationTypeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxIdentificationTypeActionPerformed
+        if (modelIdentificationType.getSelectedKey() != null) {
+            String identificationType = modelIdentificationType.getSelectedKey().toString();
+            if (identificationType.equals("CF")) {
+                requestFinalConsumer();
+            } else {
+                var error = validateIdentification();
+                if (error.getIsError()) {
+                    JOptionPane.showMessageDialog(this,
+                        error.getMessage(),
+                        "Advertencia",
+                        JOptionPane.WARNING_MESSAGE);
+
+                    txtIdentification.requestFocus();
+                    return;
+                }
+                requestIdentification();
+            }
+        }
+    }//GEN-LAST:event_cbxIdentificationTypeActionPerformed
+
+    private void txtIdentificationFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtIdentificationFocusGained
+        txtIdentification.selectAll();
+    }//GEN-LAST:event_txtIdentificationFocusGained
+
+    private void txtIdentificationActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtIdentificationActionPerformed
+        if (!validateEmpty(txtIdentification, "Identificación")) {
+            return;
+        }
+
+        if (existCustomerByTaxId(txtIdentification.getText())) {
+            CustomerInfoBasic customer = getCustomerByTaxId(
+                txtIdentification.getText());
+
+            modelIdentificationType.setSelectedKey(customer.getType());
+            txtName.setText(customer.getName());
+            txtEmail.setText(customer.getEmail());
+            txtAddress.setText(customer.getAddress());
+            txtPhone.setText(customer.getPhone());
+
+            try {
+                this.customerext = dlSales.loadCustomerExt(customer.getId());
+            } catch (BasicException ex) {
+                log.error(ex.getMessage());
+            }
+        } else {
+            modelIdentificationType.setSelectedKey(null);
+            txtName.setText("");
+            txtEmail.setText("");
+            txtAddress.setText(cityWhenAddressIsEmpty);
+            txtPhone.setText("");
+
+            this.customerext = null;
+        }
+
+        requestIdentification();
+        m_jButtonOK.setEnabled(true);
+        if (m_jTabPayment.getTabCount() > 0) {
+            m_jTabPayment.setSelectedIndex(0);
+        }
+        cbxIdentificationType.requestFocus();
+    }//GEN-LAST:event_txtIdentificationActionPerformed
+
+    private void txtNameFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtNameFocusGained
+        txtName.selectAll();
+    }//GEN-LAST:event_txtNameFocusGained
+
+    private void txtNameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtNameActionPerformed
+        if (!validateEmpty(txtName, "Razón Social")) {
+            return;
+        }
+        txtEmail.requestFocus();
+    }//GEN-LAST:event_txtNameActionPerformed
+
+    private void txtEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtEmailActionPerformed
+        txtAddress.requestFocus();
+        txtAddress.selectAll();
+    }//GEN-LAST:event_txtEmailActionPerformed
+
+    private void txtAddressActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtAddressActionPerformed
+        if (!validateEmpty(txtAddress, "Dirección")) {
+            return;
+        }
+        txtPhone.requestFocus();
+    }//GEN-LAST:event_txtAddressActionPerformed
+
+    private void cmdUndergroundActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdUndergroundActionPerformed
+        if (m_jButtonPrint.isSelected()) {
+            m_jButtonPrint.setSelected(false);
+            jlblPrinterStatus.setText("Printer OFF");
+        } else {
+            m_jButtonPrint.setSelected(true);
+            jlblPrinterStatus.setText("Printer ON");
+        }
+    }//GEN-LAST:event_cmdUndergroundActionPerformed
+
+    /**
+     * Validate that string characters not empty
+     */
+    private Boolean validateEmpty(javax.swing.JTextField field, String name) {
+        String stringCharacters = field.getText();
+        stringCharacters = stringCharacters.replaceAll("\\s+", "");
+        if (stringCharacters.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "El el campo de texto " + name + " no tiene que estar vacío",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+    
+    private ErrorMessage validateIdentification() {
+        final var validator = new Validator();
+
+        return validator.identification(getIdentificationType(), txtIdentification.getText());
+    }
+    
+    private String getIdentificationType() {
+        return modelIdentificationType.getSelectedKey().toString();
+    }
+    
+    private void requestIdentification() {
+        if (txtIdentification.getText().isEmpty()) {
+            txtIdentification.requestFocus();
+        } else {
+            txtName.requestFocus();
+        }
+        txtIdentification.setEditable(true);
+        txtName.setEditable(true);
+        txtEmail.setEditable(true);
+        txtAddress.setEditable(true);
+        txtPhone.setEditable(true);
+
+        cleanWhenFinalConsumer();
+    }
+    
+    private void requestFinalConsumer() {
+        txtIdentification.setText("9999999999999");
+        txtName.setText("Consumidor Final");
+        txtEmail.setText("");
+        txtAddress.setText("");
+        txtPhone.setText("");
+        txtName.setEditable(false);
+        txtEmail.setEditable(false);
+        txtAddress.setEditable(false);
+        txtPhone.setEditable(false);
+    }
+    
+    private void cleanWhenFinalConsumer() {
+        if (txtIdentification.getText().equals("9999999999999")) {
+            txtIdentification.setText("");
+        }
+        if (txtName.getText().equals("Consumidor Final")) {
+            txtName.setText("");
+        }
+    }
+    
+    private Boolean existCustomerByTaxId(String identification) {
+        try {
+            int count = 0;
+            count = dlCustomers
+                    .countCustomerByTaxId(
+                            identification
+                    );
+            if (count == 0) {
+                return false;
+            }
+            if (count > 1) {
+                JOptionPane.showMessageDialog(this,
+                        "Existe más de un cliente con esa identificación",
+                        "Advertencia",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+            return true;
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+            return false;
+        }
+    }
+    
+    private CustomerInfoBasic getCustomerById(String customerId) {
+        CustomerInfoBasic customer;
+        try {
+            customer = dlCustomers.getCustomerById(customerId);
+            if (customer == null) {
+                return null;
+            }
+
+            return customer;
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Search customer by identification
+     */
+    private CustomerInfoBasic getCustomerByTaxId(String identification) {
+        try {
+            CustomerInfoBasic customer = dlCustomers.getCustomerByTaxId(
+                    identification
+            );
+            if (customer == null) {
+                return null;
+            }
+            return customer;
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+            return null;
+        }
+    }
+    
+    private Boolean isBlank(String text, String message) {
+        final var validate = new Validator();
+
+        final var isBlank = validate.blank(text, message);
+
+        if (isBlank.getIsError()) {
+            JOptionPane.showMessageDialog(this,
+                    isBlank.getMessage(),
+                    "Advertencia",
+                    JOptionPane.WARNING_MESSAGE);
+            return isBlank.getIsError();
+        }
+
+        return false;
+    }
+    
+    /**
+     * Validate the value of sale of the Final Consumer
+     */
+    private Boolean isValidAmountToFinalConsumer() {
+        try {
+            Double amount = dlCustomers
+                    .maxValueInSaleWhenIsFinalConsumer(txtIdentification.getText());
+
+            return m_dTotal < amount;
+        } catch (BasicException ex) {
+            System.out.println("Error al recuperar en monto válido para consumidor final");
+            return false;
+        }
+    }
+    
+    private Boolean existCustomerByTaxIdAndTaxIdType(String identification, String identificationType) {
+        try {
+            int count = 0;
+            count = dlCustomers
+                    .countCustomerByTaxIdAndTaxIdType(
+                            identification,
+                            identificationType
+                    );
+            if (count == 0) {
+                return false;
+            }
+            return true;
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Search customer by taxid, return if exist return true else false
+     */
+    private Boolean existCustomer(String customerTaxId) {
+        int count = 0;
+        try {
+            count = dlCustomers.countCustomerByTaxId(customerTaxId);
+            if (count == 0) {
+                return false;
+            }
+
+            return true;
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Save customer
+     */
+    private void saveCustomer() {
+        CustomerInfoBasic customer = new CustomerInfoBasic(txtIdentification.getText());
+        customer.setType(getIdentificationType());
+        customer.setName(WordUtils.capitalizeFully(txtName.getText()));
+        customer.setEmail(txtEmail.getText());
+        customer.setAddress(WordUtils.capitalizeFully(txtAddress.getText()));
+        customer.setPhone(txtPhone.getText());
+
+        try {
+            dlCustomers.saveCustomer(customer);
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+        }
+    }
+
+    /**
+     * Update customer
+     */
+    private void updateCustomer() {
+        CustomerInfoBasic customer = new CustomerInfoBasic(customerext.getId());
+        customer.setName(WordUtils.capitalizeFully(txtName.getText()));
+        customer.setEmail(txtEmail.getText());
+        customer.setAddress(WordUtils.capitalizeFully(txtAddress.getText()));
+        customer.setPhone(txtPhone.getText());
+
+        customerext.setName(customer.getName());
+        customerext.setCemail(customer.getEmail());
+        customerext.setAddress(customer.getAddress());
+        customerext.setPhone1(customer.getPhone());
+
+        try {
+            dlCustomers.updateCustomer(customer);
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+        }
+    }
+    
+    void setAddressWhenIsEmpty(String establishmentId) {
+        DataLogicEstablishment dlEstablishment = (DataLogicEstablishment) app.getBean("dev.mestizos.pos.establishment.DataLogicEstablishment");
+
+        try {
+            if (!establishmentId.isEmpty()) {
+                EstablishmentInfo establishmentInfo = (EstablishmentInfo) dlEstablishment
+                        .getEstablishmentInfo()
+                        .find(establishmentId);
+
+                if (establishmentInfo == null) {
+                    txtAddress.setText("No definida");
+                } else {
+                    cityWhenAddressIsEmpty = establishmentInfo.getCity();
+                    txtAddress.setText(cityWhenAddressIsEmpty);
+                }
+            }
+
+        } catch (BasicException ex) {
+            txtAddress.setText("No definida");
+        }
+    }
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JComboBox<String> cbxIdentificationType;
+    private javax.swing.JToggleButton cmdUnderground;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
     private javax.swing.JLabel jlblPrinterStatus;
+    private javax.swing.JLabel lblAddress;
+    private javax.swing.JLabel lblEmail;
+    private javax.swing.JLabel lblIdentification;
+    private javax.swing.JLabel lblName;
+    private javax.swing.JLabel lblPhone;
     private javax.swing.JButton m_jButtonAdd;
     private javax.swing.JButton m_jButtonCancel;
     private javax.swing.JButton m_jButtonOK;
@@ -783,5 +1502,12 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
     private javax.swing.JLabel m_jRemaininglEuros;
     private javax.swing.JTabbedPane m_jTabPayment;
     private javax.swing.JLabel m_jTotalEuros;
+    private javax.swing.JTabbedPane tabData;
+    private javax.swing.JTextField txtAddress;
+    private javax.swing.JTextField txtEmail;
+    private javax.swing.JTextField txtIdentification;
+    private javax.swing.JTextField txtName;
+    private javax.swing.JTextField txtPhone;
+    private javax.swing.JLabel txtType;
     // End of variables declaration//GEN-END:variables
 }
