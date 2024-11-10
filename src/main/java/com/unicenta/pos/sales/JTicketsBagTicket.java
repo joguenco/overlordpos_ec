@@ -43,6 +43,10 @@ import com.unicenta.pos.scripting.ScriptException;
 import com.unicenta.pos.scripting.ScriptFactory;
 import com.unicenta.pos.ticket.TicketInfo;
 import com.unicenta.pos.ticket.TicketLineInfo;
+import dev.joguenco.pos.establishment.DataLogicEstablishment;
+import dev.joguenco.pos.establishment.EstablishmentInfo;
+import dev.joguenco.pos.taxpayer.DataLogicTaxpayer;
+import dev.joguenco.pos.taxpayer.TaxpayerInfo;
 
 /**
  *
@@ -216,6 +220,26 @@ public class JTicketsBagTicket extends JTicketsBag {
                     JOptionPane.WARNING_MESSAGE);
                 
             } else {
+                DataLogicTaxpayer dataLogicTaxPayer = (DataLogicTaxpayer) m_App.getBean("dev.joguenco.pos.taxpayer.DataLogicTaxpayer");
+                DataLogicEstablishment dataLogicEstablishment = (DataLogicEstablishment) m_App.getBean("dev.joguenco.pos.establishment.DataLogicEstablishment");
+                EstablishmentInfo establishmentInfo = new EstablishmentInfo();
+
+                // Extract the first three characters of string and then query establishment
+                if (ticket.printSequential().length() > 3) {
+                    establishmentInfo = (EstablishmentInfo) dataLogicEstablishment
+                            .getEstablishmentInfo()
+                            .find(ticket.printSequential().substring(0, 3));
+                }
+
+                ticket.setTaxPayerInfo((TaxpayerInfo) dataLogicTaxPayer.getTaxPayerInfo().find("1"));
+                ticket.setEnvironment(m_dlSystem.getResourceAsText("Electronic.Environment"));
+                if (establishmentInfo != null) {
+                    ticket.setComercialName(establishmentInfo.getComercialName());
+                    ticket.setAddressEstablishment(establishmentInfo.getAddress());
+                    ticket.setPhoneEstablishment(establishmentInfo.getPhone());
+                    ticket.setEmailEstablishment(establishmentInfo.getEmail());
+                }
+
                 m_ticket = ticket;
                 m_ticketCopy = null;
                     if(m_ticket.getTicketStatus()> 0) {
@@ -542,7 +566,17 @@ public class JTicketsBagTicket extends JTicketsBag {
     }//GEN-LAST:event_m_jPrintActionPerformed
 
     private void m_jRefundActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jRefundActionPerformed
-        
+
+        if (m_ticket == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    AppLocal.getIntString("message.cannotloadticket"),
+                    "",
+                    JOptionPane.ERROR_MESSAGE);
+
+            return;
+        }
+
         java.util.List aRefundLines = new ArrayList();
         
         for(int i = 0; i < m_ticket.getLinesCount(); i++) {
@@ -558,8 +592,16 @@ public class JTicketsBagTicket extends JTicketsBag {
         refundticket.setTicketType(TicketInfo.RECEIPT_REFUND);
         refundticket.setTicketStatus(m_ticket.getTicketId());
         refundticket.setCustomer(m_ticket.getCustomer());
-        refundticket.setPayments(m_ticket.getPayments());    
-        refundticket.setOldTicket(true);         
+        refundticket.setPayments(m_ticket.getPayments());
+        refundticket.setOldTicket(true);
+        refundticket.setTicketTicketId(m_ticket.getId());
+
+        if (m_ticket.getCode().equals("FV") || m_ticket.getCode().equals("BV")) {
+            refundticket.setCode("DV");
+        } else {
+            refundticket.setCode("DE");
+        }
+
         m_panelticketedit.setActiveTicket(refundticket, null);
     }//GEN-LAST:event_m_jRefundActionPerformed
 
@@ -584,7 +626,9 @@ private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRS
             m_jTicketEditor.reset();
             m_jTicketEditor.activate();
         } else {
-            readTicket(selectedTicket.getTicketId(), selectedTicket.getTicketType(), 
+            readTicket(
+                    selectedTicket.getTicketId(), 
+                    selectedTicket.getTicketType(), 
                     selectedTicket.getSerieNumber());
         }
 }//GEN-LAST:event_jButton2ActionPerformed
