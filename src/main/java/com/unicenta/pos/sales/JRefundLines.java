@@ -21,8 +21,10 @@ package com.unicenta.pos.sales;
 
 import com.unicenta.pos.forms.AppLocal;
 import com.unicenta.pos.forms.DataLogicSystem;
+import com.unicenta.pos.ticket.TicketInfo;
 import com.unicenta.pos.ticket.TicketLineInfo;
 import java.awt.BorderLayout;
+import static java.lang.Math.abs;
 import java.util.List;
 
 /**
@@ -170,39 +172,113 @@ public JRefundLines(DataLogicSystem dlSystem, JPanelTicketEdits jTicketEdit) {
 
     private void m_jbtnAddAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jbtnAddAllActionPerformed
 
+        double quantityRefound;
+        double quantity;
+
         for (int i = 0; i < m_aLines.size(); i++) {
             TicketLineInfo oLine = (TicketLineInfo) m_aLines.get(i);
-            TicketLineInfo oNewLine = new TicketLineInfo(oLine);            
-            oNewLine.setMultiply(-oLine.getMultiply());
-            m_jTicketEdit.addTicketLine(oNewLine);
+            TicketLineInfo oNewLine = new TicketLineInfo(oLine);
+
+            // Count quantity of item by code
+            quantity = countQuantityItem(oNewLine.getProductID());
+
+            // Count quantity refound of item by code
+            quantityRefound = countQuantityRefoundItem(oNewLine.getProductID());
+
+            // Compare quantity
+            if (quantity >= (quantityRefound + abs(oLine.getMultiply()))) {
+                oNewLine.setMultiply(-oLine.getMultiply());
+                m_jTicketEdit.addTicketLine(oNewLine);
+            }
         }
         
     }//GEN-LAST:event_m_jbtnAddAllActionPerformed
 
     private void m_jbtnAddOneActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jbtnAddOneActionPerformed
 
+        double quantityRefound;
+        double quantity;
+
         int index = ticketlines.getSelectedIndex();
         if (index >= 0) {
             TicketLineInfo oLine = (TicketLineInfo) m_aLines.get(index);
             TicketLineInfo oNewLine = new TicketLineInfo(oLine);
-            oNewLine.setMultiply(-1.0);
-            m_jTicketEdit.addTicketLine(oNewLine);
-        }   
-        
+
+            // Count quantity of item by code
+            quantity = countQuantityItem(oNewLine.getProductID());
+
+            // Count quantity refound of item by code
+            quantityRefound = countQuantityRefoundItem(oNewLine.getProductID());
+
+            // Compare quantity
+            if (quantity > quantityRefound) {
+                oNewLine.setMultiply(-1.0);
+                m_jTicketEdit.addTicketLine(oNewLine);
+            }
+        }
     }//GEN-LAST:event_m_jbtnAddOneActionPerformed
 
     private void m_jbtnAddLineActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jbtnAddLineActionPerformed
 
+        double quantityRefound;
+        double quantity;
+
         int index = ticketlines.getSelectedIndex();
         if (index >= 0) {
             TicketLineInfo oLine = (TicketLineInfo) m_aLines.get(index);
-            TicketLineInfo oNewLine = new TicketLineInfo(oLine);            
-            oNewLine.setMultiply(-oLine.getMultiply());
-            m_jTicketEdit.addTicketLine(oNewLine);
-        }        
+            TicketLineInfo oNewLine = new TicketLineInfo(oLine);
+
+            // Count quantity of item by code
+            quantity = countQuantityItem(oNewLine.getProductID());
+
+            // Count quantity refound of item by code
+            quantityRefound = countQuantityRefoundItem(oNewLine.getProductID());
+
+            // Compare quantity
+            if (quantity >= (quantityRefound + abs(oLine.getMultiply()))) {
+                oNewLine.setMultiply(-oLine.getMultiply());
+                m_jTicketEdit.addTicketLine(oNewLine);
+            }
+        }
     }//GEN-LAST:event_m_jbtnAddLineActionPerformed
-    
-    
+
+    /**
+     * Count quantity of item by code
+     *
+     * @param productId
+     * @return
+     */
+    private double countQuantityItem(String productId) {
+        double quantity = 0;
+
+        for (int i = 0; i < m_aLines.size(); i++) {
+            TicketLineInfo line = (TicketLineInfo) m_aLines.get(i);
+            if (productId.equals(line.getProductID())) {
+                quantity = quantity + line.getMultiply();
+            }
+        }
+        return abs(quantity);
+    }
+
+    /**
+     * Count quantity refound of item by code
+     *
+     * @param productId
+     * @return
+     */
+    private double countQuantityRefoundItem(String productId) {
+        TicketInfo refoundTicket = m_jTicketEdit.m_oTicket;
+        double quantityRefound = 0;
+
+        for (int i = 0; i < refoundTicket.getLinesCount(); i++) {
+            TicketLineInfo refoundLine = refoundTicket.getLine(i);
+            if (productId.equals(refoundLine.getProductID())) {
+                quantityRefound = quantityRefound + refoundLine.getMultiply();
+            }
+        }
+        return abs(quantityRefound);
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
