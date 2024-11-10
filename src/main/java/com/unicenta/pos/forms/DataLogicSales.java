@@ -2848,4 +2848,14 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                     return i;
                 });
     }
+    
+    // Get ticket by code and serie
+    public StaticSentence getCountTicketsByCodeAndSerie() {
+        return new StaticSentence(s,
+                "select count(*) from tickets "
+                + "where code = ? "
+                + "and serie_number = ?",
+                new SerializerWriteBasic(new Datas[]{Datas.STRING, Datas.STRING}),
+                SerializerReadInteger.INSTANCE);
+    }
 }

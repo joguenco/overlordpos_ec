@@ -538,6 +538,19 @@ public final class TicketInfo implements SerializableRead, Externalizable {
         return sum;
     }
     
+    public double getSubTotalIVA() {
+
+        double sum = 0.0;
+
+        for (TicketLineInfo line : m_aLines) {
+            if (line.getTaxInfo().getRate() > 0) {
+                sum += line.getSubValue();
+            }
+        }
+
+        return sum;
+    }
+    
     public double getSubTotalIVA0() {
 
         double sum = 0.0;
@@ -741,6 +754,14 @@ public final class TicketInfo implements SerializableRead, Externalizable {
 
     public String printTax() {
         return Formats.CURRENCY.formatValue(getTax());
+    }
+    
+    public String printSubTotalIVA() {
+        return Formats.CURRENCY.formatValue(getSubTotalIVA());
+    }
+
+    public String printSubTotalIVA0() {
+        return Formats.CURRENCY.formatValue(getSubTotalIVA0());
     }
 
     public String printTotal() {

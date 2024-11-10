@@ -24,6 +24,7 @@ import com.unicenta.data.loader.QBFCompareEnum;
 import com.unicenta.data.user.EditorCreator;
 import com.unicenta.data.user.ListProvider;
 import com.unicenta.data.user.ListProviderCreator;
+import com.unicenta.editor.JEditorString;
 import com.unicenta.pos.forms.AppLocal;
 import com.unicenta.pos.forms.AppView;
 import java.awt.*;
@@ -40,6 +41,7 @@ import java.awt.event.KeyEvent; //Jack
 public class JCustomerFinder extends javax.swing.JDialog implements EditorCreator {
 
     private CustomerInfo m_ReturnCustomer;
+    private CustomerInfo selectedCustomer;
     private ListProvider lpr;
     private AppView appView;
     
@@ -228,6 +230,23 @@ public class JCustomerFinder extends javax.swing.JDialog implements EditorCreato
         } catch (BasicException e) {
         }
     }
+    
+    /*
+        Search customer and set this customer
+     */
+    public void executeSearchCustomerAndSet() {
+        try {
+            jListCustomers.setModel(new MyListData(lpr.loadData()));
+            if (jListCustomers.getModel().getSize() > 0) {
+                jListCustomers.setSelectedIndex(0);
+            }
+            selectedCustomer = (CustomerInfo) jListCustomers.getSelectedValue();
+            dispose();
+        } catch (BasicException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      *
@@ -609,6 +628,10 @@ public class JCustomerFinder extends javax.swing.JDialog implements EditorCreato
 
     }//GEN-LAST:event_jcmdOKActionPerformed
 
+    public void setM_jtxtTaxID(JEditorString m_jtxtTaxID) {
+        this.m_jtxtTaxID = m_jtxtTaxID;
+    }
+    
     private void jcmdCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jcmdCancelActionPerformed
         
         dispose();

@@ -901,7 +901,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
                     .add(lblPhone))
                 .add(4, 4, 4)
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, cbxIdentificationType, 0, 296, Short.MAX_VALUE)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, cbxIdentificationType, 0, 376, Short.MAX_VALUE)
                     .add(txtEmail)
                     .add(txtPhone))
                 .addContainerGap())
@@ -939,7 +939,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
 
         getContentPane().add(jPanel5, java.awt.BorderLayout.SOUTH);
 
-        setSize(new java.awt.Dimension(820, 730));
+        setSize(new java.awt.Dimension(900, 790));
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
@@ -1456,7 +1456,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
     }
     
     void setAddressWhenIsEmpty(String establishmentId) {
-        DataLogicEstablishment dlEstablishment = (DataLogicEstablishment) app.getBean("dev.mestizos.pos.establishment.DataLogicEstablishment");
+        DataLogicEstablishment dlEstablishment = (DataLogicEstablishment) app.getBean("dev.joguenco.pos.establishment.DataLogicEstablishment");
 
         try {
             if (!establishmentId.isEmpty()) {

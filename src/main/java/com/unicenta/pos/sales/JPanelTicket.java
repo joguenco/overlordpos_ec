@@ -32,6 +32,7 @@ import com.unicenta.data.gui.ComboBoxValModel;
 import com.unicenta.data.gui.ListKeyed;
 import com.unicenta.data.gui.MessageInf;
 import com.unicenta.data.loader.SentenceList;
+import com.unicenta.editor.JEditorString;
 //import com.unicenta.plugins.Application;
 import com.unicenta.pos.catalog.JCatalog;
 import com.unicenta.pos.customers.*;
@@ -54,6 +55,13 @@ import com.unicenta.pos.util.AltEncrypter;
 import com.unicenta.pos.util.InactivityListener;
 import com.unicenta.pos.util.JRPrinterAWT300;
 import com.unicenta.pos.util.ReportUtils;
+import dev.joguenco.pos.establishment.DataLogicEstablishment;
+import dev.joguenco.pos.establishment.EstablishmentInfo;
+import dev.joguenco.pos.taxpayer.DataLogicTaxpayer;
+import dev.joguenco.pos.taxpayer.TaxpayerInfo;
+import dev.joguenco.pos.ticketsnum.DataLogicTicketsNum;
+import dev.joguenco.pos.ticketsnum.TicketsNumInfo;
+import dev.joguenco.pos.ticketsnumrefund.DataLogicTicketsNumRefund;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.*;
 import net.sf.jasperreports.engine.data.JRMapArrayDataSource;
@@ -181,7 +189,6 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
     dlSales = (DataLogicSales) m_App.getBean("com.unicenta.pos.forms.DataLogicSales");
     dlCustomers = (DataLogicCustomers) m_App.getBean("com.unicenta.pos.customers.DataLogicCustomers");
     dlReceipts = (DataLogicReceipts) app.getBean("com.unicenta.pos.sales.DataLogicReceipts");
-
 
     /* uniCenta Feb 2018
      * Changed for 4.3
@@ -582,6 +589,8 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
       m_jTaxesEuros.setText(null);
       m_jTotalEuros.setText(null);
       jCheckStock.setText(null);
+      m_jSubtotalIVA.setText(null);
+      m_jSubtotalIVA_0.setText(null);
 
       checkStock();
       stateToZero();
@@ -679,10 +688,14 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
       m_jSubtotalEuros.setText(null);
       m_jTaxesEuros.setText(null);
       m_jTotalEuros.setText(null);
+      m_jSubtotalIVA.setText(null);
+      m_jSubtotalIVA_0.setText(null);
     } else {
       m_jSubtotalEuros.setText(m_oTicket.printSubTotal());
       m_jTaxesEuros.setText(m_oTicket.printTax());
       m_jTotalEuros.setText(m_oTicket.printTotal());
+      m_jSubtotalIVA.setText(m_oTicket.printSubTotalIVA());
+      m_jSubtotalIVA_0.setText(m_oTicket.printSubTotalIVA0());
     }
     repaint();
   }
@@ -844,15 +857,18 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
         } else {
           if (i < 1) {
 
-            if (m_App.getAppUserView().getUser().hasPermission("sales.DeleteLines")) {
+            if (m_App.getAppUserView().getUser().hasPermission("sales.DeleteLines")) {              
+              //Updated by Jorge Luis, remove message delete item from list
+              /*
               int input = JOptionPane.showConfirmDialog(this,
                       AppLocal.getIntString("message.deletelineyes")
                       , AppLocal.getIntString("label.deleteline"), JOptionPane.YES_NO_OPTION);
 
               if (input == 0) {
+              */
                 m_oTicket.removeLine(i);
                 m_ticketlines.removeTicketLine(i);
-              }
+              /*}*/
             } else {
               JOptionPane.showMessageDialog(this,
                       AppLocal.getIntString("message.deletelineno")
@@ -1031,9 +1047,53 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
       Toolkit.getDefaultToolkit().beep();
     }
   }
+  
+  /*
+        Get customer default in the JPaymentSelect. 
+     */
+    private boolean getCustomerDefault(String identification) {
+        CustomerInfo c = new CustomerInfo(identification);
+
+        JCustomerFinder finder = JCustomerFinder.getCustomerFinder(this, dlCustomers);
+        c.setSearchkey(identification);
+
+        JEditorString m_jtxtTax = new JEditorString();
+        m_jtxtTax.setText(identification);
+
+        finder.setM_jtxtTaxID(m_jtxtTax);
+
+        finder.executeSearchCustomerAndSet();
+        c = finder.getSelectedCustomer();
+
+        if (c == null) {
+            return false;
+        }
+
+        try {
+            m_oTicket.setCustomer(finder.getSelectedCustomer() == null
+                    ? null
+                    : dlSales.loadCustomerExt(finder.getSelectedCustomer().getId()));
+        } catch (BasicException e) {
+            MessageInf msg = new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.cannotfindcustomer"), e);
+            msg.show(this);
+        }
+
+        return true;
+    }
 
   @SuppressWarnings("empty-statement")
   private void stateTransition(char cTrans) {
+    //if Customer is null then search customer default, that is defined in Customer.Default.txt
+    if (m_oTicket.getCustomer() == null) {
+        String customer = dlSystem.getResourceAsText("Customer.Default");
+        if (getCustomerDefault(customer) == false) {
+            JOptionPane.showMessageDialog(this,
+                    "El cliente por defecto, no existe. Crear Cliente POS o un cliente por defector",
+                    "Cliente no existe",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+    }
 
     if ((cTrans == '\n') || (cTrans == '?')) {
 
@@ -1806,6 +1866,23 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
       warrantyCheck(ticket);
 
       try {
+        var isValidSerial = false;
+        // Get codes and series
+        if (ticket.getTicketType() == 0) {
+            ticket.setCode("FV");
+            isValidSerial = getCodeAndSerieSales(ticket, "primary");
+        } else if (ticket.getTicketType() == 1) {
+            isValidSerial = getCodeAndSerieRefund(ticket);
+        } else {
+            isValidSerial = true;
+            ticket.setCode("");
+            ticket.setSerie("");
+            ticket.setFormatNumberDigits("%01d");
+        }
+
+        if (isValidSerial == false) {
+            return false;
+        }
 
         taxeslogic.calculateTaxes(ticket);
         if (ticket.getTotal() >= 0.0) {
@@ -1826,9 +1903,26 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
           paymentdialog.setTransactionID(ticket.getTransactionID());
 
-          if (paymentdialog.showDialog(ticket.getTotal(), ticket.getCustomer())) {
+          if (paymentdialog.showDialog(ticket.getTotal(), ticket.getCustomer(), ticket.getSerie())) {
 
             ticket.setPayments(paymentdialog.getSelectedPayments());
+            
+            if (ticket.getTicketType() == TicketInfo.RECEIPT_NORMAL) {
+                ticket.setCustomer(paymentdialogreceipt.getCustomerext());
+                if (!paymentdialogreceipt.getTicketType().isEmpty()) {
+                    ticket.setCode(paymentdialog.getTicketType());
+                    if ("FV".equals(paymentdialogreceipt.getTicketType())) {
+                        isValidSerial = getCodeAndSerieSales(ticket, "primary");
+                    } else if ("EV".equals(paymentdialogreceipt.getTicketType())) {
+                        isValidSerial = getCodeAndSerieSales(ticket, "alternative");
+                    }
+                    if (isValidSerial == false) {
+                        return false;
+                    }
+                }
+            } else if (ticket.getTicketType() == TicketInfo.RECEIPT_REFUND) {
+                ticket.setCustomer(paymentdialogrefund.getCustomerext());
+            }
 
             ticket.setUser(m_App.getAppUserView().getUser().getUserInfo());
             ticket.setActiveCash(m_App.getActiveCashIndex());
@@ -1837,6 +1931,26 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
             if (executeEvent(ticket, ticketext, "ticket.save") == null) {
 
               try {
+                DataLogicTaxpayer dataLogicTaxPayer = (DataLogicTaxpayer) m_App.getBean("dev.joguenco.pos.taxpayer.DataLogicTaxpayer");
+                DataLogicEstablishment dataLogicEstablishment = (DataLogicEstablishment) m_App.getBean("dev.joguenco.pos.establishment.DataLogicEstablishment");
+                EstablishmentInfo establishmentInfo = new EstablishmentInfo();
+
+                //Extract the first three characters of string and then query establishment
+                if (ticket.getSerie().length() > 3) {
+                    establishmentInfo = (EstablishmentInfo) dataLogicEstablishment
+                            .getEstablishmentInfo()
+                            .find(ticket.getSerie().substring(0, 3));
+                }
+
+                ticket.setTaxPayerInfo((TaxpayerInfo) dataLogicTaxPayer.getTaxPayerInfo().find("1"));
+                ticket.setEnvironment(dlSystem.getResourceAsText("Electronic.Environment"));
+                if (establishmentInfo != null) {
+                    ticket.setComercialName(establishmentInfo.getComercialName());
+                    ticket.setAddressEstablishment(establishmentInfo.getAddress());
+                    ticket.setPhoneEstablishment(establishmentInfo.getPhone());
+                    ticket.setEmailEstablishment(establishmentInfo.getEmail());
+                }
+                                
                 dlSales.saveTicket(ticket, m_App.getInventoryLocation());
                 String lastTicketNumber = Integer.toString(ticket.getTicketId());
                 String lastTicketType = Integer.toString(ticket.getTicketType());
@@ -1884,7 +1998,9 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                 AppLocal.getIntString("message.cannotcalculatetaxes"));
         msg.show(this);
         resultok = false;
-      }
+      } catch (BasicException ex) {
+            log.error(JPanelTicket.class.getName() + " " + ex.getMessage());
+        }
 
       m_oTicket.resetTaxes();
       m_oTicket.resetPayments();
@@ -1895,6 +2011,160 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
     return resultok;
   }
+  
+  private Boolean getCodeAndSerieSales(TicketInfo ticket, String priority) throws BasicException {
+        DataLogicTicketsNum dataLogicTicketsNum
+                = (DataLogicTicketsNum) m_App
+                        .getBean("dev.joguenco.pos.ticketsnum.DataLogicTicketsNum");
+
+        // Verify series actives
+        if (!isValidSeriesSales(
+                dataLogicTicketsNum,
+                ticket.getUser().getId(),
+                ticket.getCode(),
+                priority)) {
+            return false;
+        }
+
+        // Get serie and code actives
+        TicketsNumInfo ticketNum = (TicketsNumInfo) dataLogicTicketsNum
+                .getSerial()
+                .find(ticket.getUser().getId(), ticket.getCode(), priority);
+
+        String formatNumberDigits = dlSystem.getResourceAsText("FormatTicket.NumberDigits");
+
+        // Verify if series is duplicated in tickets table, fail when is duplicated
+        if (isDuplicateSeriesInTicketsSales(
+                ticketNum,
+                formatNumberDigits)) {
+            return false;
+        }
+
+        // Set serie and code in ticket
+        ticket.setCode(ticketNum.getCode());
+        ticket.setSerie(ticketNum.getSerie());
+        ticket.setFormatNumberDigits(formatNumberDigits);
+
+        return true;
+    }
+  
+  private Boolean getCodeAndSerieRefund(TicketInfo ticket) throws BasicException {
+        DataLogicTicketsNumRefund dataLogicTicketsNum
+                = (DataLogicTicketsNumRefund) m_App
+                        .getBean("dev.joguenco.pos.ticketsnumrefund.DataLogicTicketsNumRefund");
+
+        // Verify series actives
+        if (!isValidSeriesRefund(dataLogicTicketsNum, ticket.getCode())) {
+            return false;
+        }
+
+        // Get serie and code actives
+        TicketsNumInfo ticketNum = (TicketsNumInfo) dataLogicTicketsNum
+                .getSerial()
+                .find(
+                        m_App.getAppUserView().getUser().getId(),
+                        ticket.getCode()
+                );
+
+        String formatNumberDigits = dlSystem.getResourceAsText("FormatTicket.NumberDigits");
+
+        // Verify if series is duplicated in tickets table, fail when is duplicated
+        if (isDuplicateSeriesInTicketsRefund(
+                ticketNum,
+                formatNumberDigits)) {
+            return false;
+        }
+
+        // Set serie and code in ticket
+        ticket.setCode(ticketNum.getCode());
+        ticket.setSerie(ticketNum.getSerie());
+        ticket.setFormatNumberDigits(formatNumberDigits);
+
+        return true;
+    }
+  
+  private Boolean isDuplicateSeriesInTicketsSales(TicketsNumInfo ticketNum,
+            String formatNumberDigits) throws BasicException {
+
+        int countTickets = (int) dlSales.getCountTicketsByCodeAndSerie()
+                .find(
+                        ticketNum.getCode(),
+                        ticketNum.getSerie().concat(String.format(formatNumberDigits, ticketNum.getId() + 1))
+                );
+
+        if (countTickets > 0) {
+            JOptionPane.showMessageDialog(this,
+                    "El documento " + ticketNum.getCode() + " "
+                    + ticketNum.getSerie().concat(String.format(formatNumberDigits, ticketNum.getId() + 1))
+                    + " ya está registrado",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return true;
+        }
+
+        return false;
+    }
+  
+  private Boolean isDuplicateSeriesInTicketsRefund(TicketsNumInfo ticketNum,
+            String formatNumberDigits) throws BasicException {
+        int countTickets = (int) dlSales
+                .getCountTicketsByCodeAndSerie()
+                .find(
+                        ticketNum.getCode(),
+                        ticketNum.getSerie().concat(String.format(formatNumberDigits, ticketNum.getId() + 1))
+                );
+
+        if (countTickets > 0) {
+            JOptionPane.showMessageDialog(this,
+                    "El documento " + ticketNum.getCode() + " "
+                    + ticketNum.getSerie().concat(String.format(formatNumberDigits, ticketNum.getId() + 1))
+                    + " ya está registrado",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return true;
+        }
+
+        return false;
+    }
+
+  
+  private Boolean isValidSeriesSales(DataLogicTicketsNum dataLogicTicketsNum,
+            String peopleId,
+            String code,
+            String priority) throws BasicException {
+        final var count = (int) dataLogicTicketsNum.getCount()
+                .find(peopleId, code, priority);
+
+        if (count > 1) {
+            JOptionPane.showMessageDialog(this,
+                    "El usuario solo debe tener una serie activa. Para activar una en: mantenimiento, opción series",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
+        } else if (count == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "El usuario no tiene una serie activa. Para activar una en: mantenimiento, opción series",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
+        return true;
+    }
+  
+  private Boolean isValidSeriesRefund(DataLogicTicketsNumRefund dataLogicTicketsNum, String code) throws BasicException {
+        int count = (int) dataLogicTicketsNum.getCount()
+                .find(m_App.getAppUserView().getUser().getId(), code);
+
+        if (count == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "El usuario no tiene una serie activa para devolver una"
+                    + code
+                    + ". Para activar: mantenimiento, opción series devolución.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
+        return true;
+    }
 
   private boolean warrantyCheck(TicketInfo ticket) {
     warrantyPrint = false;
@@ -2368,537 +2638,574 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
    * WARNING: Do NOT modify this code. The content of this method is
    * always regenerated by the FormEditor.
    */
-  // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-  private void initComponents() {
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
 
-    m_jPanContainer = new javax.swing.JPanel();
-    m_jOptions = new javax.swing.JPanel();
-    m_jPanelBag = new javax.swing.JPanel();
-    jTBtnShow = new javax.swing.JToggleButton();
-    m_jbtnScale = new javax.swing.JButton();
-    jbtnMooring = new javax.swing.JButton();
-    m_jButtons = new javax.swing.JPanel();
-    btnSplit = new javax.swing.JButton();
-    btnReprint1 = new javax.swing.JButton();
-    j_btnRemotePrt = new javax.swing.JButton();
-    jBtnCustomer = new javax.swing.JButton();
-    m_jPanelScripts = new javax.swing.JPanel();
-    m_jButtonsExt = new javax.swing.JPanel();
-    jPanel1 = new javax.swing.JPanel();
-    m_jPanTicket = new javax.swing.JPanel();
-    jPanel5 = new javax.swing.JPanel();
-    jPanel2 = new javax.swing.JPanel();
-    m_jDelete = new javax.swing.JButton();
-    m_jList = new javax.swing.JButton();
-    m_jEditLine = new javax.swing.JButton();
-    jEditAttributes = new javax.swing.JButton();
-    jCheckStock = new javax.swing.JButton();
-    m_jPanelCentral = new javax.swing.JPanel();
-    jPanel4 = new javax.swing.JPanel();
-    filler2 = new javax.swing.Box.Filler(new java.awt.Dimension(5, 0), new java.awt.Dimension(5, 0), new java.awt.Dimension(5, 32767));
-    m_jTicketId = new javax.swing.JLabel();
-    m_jPanTotals = new javax.swing.JPanel();
-    m_jLblTotalEuros3 = new javax.swing.JLabel();
-    m_jLblTotalEuros2 = new javax.swing.JLabel();
-    m_jLblTotalEuros1 = new javax.swing.JLabel();
-    m_jSubtotalEuros = new javax.swing.JLabel();
-    m_jTaxesEuros = new javax.swing.JLabel();
-    m_jTotalEuros = new javax.swing.JLabel();
-    m_jContEntries = new javax.swing.JPanel();
-    m_jPanEntries = new javax.swing.JPanel();
-    m_jNumberKeys = new com.unicenta.beans.JNumberKeys();
-    jPanel9 = new javax.swing.JPanel();
-    m_jaddtax = new com.alee.extended.button.WebSwitch();
-    m_jPrice = new javax.swing.JLabel();
-    m_jPor = new javax.swing.JLabel();
-    m_jEnter = new javax.swing.JButton();
-    m_jTax = new javax.swing.JComboBox();
-    m_jKeyFactory = new javax.swing.JTextField();
-    m_jPanEntriesE = new javax.swing.JPanel();
-    catcontainer = new javax.swing.JPanel();
+        m_jPanContainer = new javax.swing.JPanel();
+        m_jOptions = new javax.swing.JPanel();
+        m_jPanelBag = new javax.swing.JPanel();
+        jTBtnShow = new javax.swing.JToggleButton();
+        m_jbtnScale = new javax.swing.JButton();
+        jbtnMooring = new javax.swing.JButton();
+        m_jButtons = new javax.swing.JPanel();
+        btnSplit = new javax.swing.JButton();
+        btnReprint1 = new javax.swing.JButton();
+        j_btnRemotePrt = new javax.swing.JButton();
+        jBtnCustomer = new javax.swing.JButton();
+        m_jPanelScripts = new javax.swing.JPanel();
+        m_jButtonsExt = new javax.swing.JPanel();
+        jPanel1 = new javax.swing.JPanel();
+        m_jPanTicket = new javax.swing.JPanel();
+        jPanel5 = new javax.swing.JPanel();
+        jPanel2 = new javax.swing.JPanel();
+        m_jDelete = new javax.swing.JButton();
+        m_jList = new javax.swing.JButton();
+        m_jEditLine = new javax.swing.JButton();
+        jEditAttributes = new javax.swing.JButton();
+        jCheckStock = new javax.swing.JButton();
+        m_jPanelCentral = new javax.swing.JPanel();
+        jPanel4 = new javax.swing.JPanel();
+        filler2 = new javax.swing.Box.Filler(new java.awt.Dimension(5, 0), new java.awt.Dimension(5, 0), new java.awt.Dimension(5, 32767));
+        m_jTicketId = new javax.swing.JLabel();
+        m_jPanTotals = new javax.swing.JPanel();
+        lblTaxIva = new javax.swing.JLabel();
+        lblSubtotalTax0 = new javax.swing.JLabel();
+        m_jLblTotalEuros3 = new javax.swing.JLabel();
+        m_jLblTotalEuros2 = new javax.swing.JLabel();
+        m_jLblTotalEuros1 = new javax.swing.JLabel();
+        m_jSubtotalIVA = new javax.swing.JLabel();
+        m_jSubtotalIVA_0 = new javax.swing.JLabel();
+        m_jSubtotalEuros = new javax.swing.JLabel();
+        m_jTaxesEuros = new javax.swing.JLabel();
+        m_jTotalEuros = new javax.swing.JLabel();
+        m_jContEntries = new javax.swing.JPanel();
+        m_jPanEntries = new javax.swing.JPanel();
+        m_jNumberKeys = new com.unicenta.beans.JNumberKeys();
+        jPanel9 = new javax.swing.JPanel();
+        m_jaddtax = new com.alee.extended.button.WebSwitch();
+        m_jPrice = new javax.swing.JLabel();
+        m_jPor = new javax.swing.JLabel();
+        m_jEnter = new javax.swing.JButton();
+        m_jTax = new javax.swing.JComboBox();
+        m_jKeyFactory = new javax.swing.JTextField();
+        m_jPanEntriesE = new javax.swing.JPanel();
+        catcontainer = new javax.swing.JPanel();
 
-    setBackground(new java.awt.Color(255, 204, 153));
-    setOpaque(false);
-    setLayout(new java.awt.CardLayout());
+        setBackground(new java.awt.Color(255, 204, 153));
+        setOpaque(false);
+        setLayout(new java.awt.CardLayout());
 
-    m_jPanContainer.addFocusListener(new java.awt.event.FocusAdapter() {
-      public void focusLost(java.awt.event.FocusEvent evt) {
-        m_jPanContainerFocusLost(evt);
-      }
-    });
-    m_jPanContainer.setLayout(new java.awt.BorderLayout());
+        m_jPanContainer.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                m_jPanContainerFocusLost(evt);
+            }
+        });
+        m_jPanContainer.setLayout(new java.awt.BorderLayout());
 
-    m_jOptions.setLayout(new java.awt.BorderLayout());
+        m_jOptions.setLayout(new java.awt.BorderLayout());
 
-    m_jPanelBag.setAutoscrolls(true);
-    m_jPanelBag.setMaximumSize(new java.awt.Dimension(10, 10));
-    m_jPanelBag.setPreferredSize(new java.awt.Dimension(0, 60));
+        m_jPanelBag.setAutoscrolls(true);
+        m_jPanelBag.setMaximumSize(new java.awt.Dimension(10, 10));
+        m_jPanelBag.setPreferredSize(new java.awt.Dimension(0, 60));
 
-    jTBtnShow.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    jTBtnShow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/resources.png"))); // NOI18N
-    jTBtnShow.setPreferredSize(new java.awt.Dimension(80, 45));
-    jTBtnShow.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jTBtnShowActionPerformed(evt);
-      }
-    });
-    m_jPanelBag.add(jTBtnShow);
+        jTBtnShow.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jTBtnShow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/resources.png"))); // NOI18N
+        jTBtnShow.setPreferredSize(new java.awt.Dimension(80, 45));
+        jTBtnShow.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTBtnShowActionPerformed(evt);
+            }
+        });
+        m_jPanelBag.add(jTBtnShow);
 
-    m_jbtnScale.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-    m_jbtnScale.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/scale.png"))); // NOI18N
-    m_jbtnScale.setText(AppLocal.getIntString("button.scale")); // NOI18N
-    java.util.ResourceBundle bundle = java.util.ResourceBundle.getBundle("pos_messages"); // NOI18N
-    m_jbtnScale.setToolTipText(bundle.getString("tooltip.scale")); // NOI18N
-    m_jbtnScale.setFocusPainted(false);
-    m_jbtnScale.setFocusable(false);
-    m_jbtnScale.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    m_jbtnScale.setMaximumSize(new java.awt.Dimension(85, 44));
-    m_jbtnScale.setMinimumSize(new java.awt.Dimension(85, 44));
-    m_jbtnScale.setPreferredSize(new java.awt.Dimension(85, 45));
-    m_jbtnScale.setRequestFocusEnabled(false);
-    m_jbtnScale.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        m_jbtnScaleActionPerformed(evt);
-      }
-    });
-    m_jPanelBag.add(m_jbtnScale);
+        m_jbtnScale.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        m_jbtnScale.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/scale.png"))); // NOI18N
+        m_jbtnScale.setText(AppLocal.getIntString("button.scale")); // NOI18N
+        java.util.ResourceBundle bundle = java.util.ResourceBundle.getBundle("pos_messages"); // NOI18N
+        m_jbtnScale.setToolTipText(bundle.getString("tooltip.scale")); // NOI18N
+        m_jbtnScale.setFocusPainted(false);
+        m_jbtnScale.setFocusable(false);
+        m_jbtnScale.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        m_jbtnScale.setMaximumSize(new java.awt.Dimension(85, 44));
+        m_jbtnScale.setMinimumSize(new java.awt.Dimension(85, 44));
+        m_jbtnScale.setPreferredSize(new java.awt.Dimension(85, 45));
+        m_jbtnScale.setRequestFocusEnabled(false);
+        m_jbtnScale.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                m_jbtnScaleActionPerformed(evt);
+            }
+        });
+        m_jPanelBag.add(m_jbtnScale);
 
-    jbtnMooring.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-    jbtnMooring.setText(bundle.getString("button.moorings")); // NOI18N
-    jbtnMooring.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    jbtnMooring.setMaximumSize(new java.awt.Dimension(80, 40));
-    jbtnMooring.setMinimumSize(new java.awt.Dimension(80, 40));
-    jbtnMooring.setPreferredSize(new java.awt.Dimension(80, 45));
-    jbtnMooring.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jbtnMooringActionPerformed(evt);
-      }
-    });
-    m_jPanelBag.add(jbtnMooring);
+        jbtnMooring.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        jbtnMooring.setText(bundle.getString("button.moorings")); // NOI18N
+        jbtnMooring.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        jbtnMooring.setMaximumSize(new java.awt.Dimension(80, 40));
+        jbtnMooring.setMinimumSize(new java.awt.Dimension(80, 40));
+        jbtnMooring.setPreferredSize(new java.awt.Dimension(80, 45));
+        jbtnMooring.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jbtnMooringActionPerformed(evt);
+            }
+        });
+        m_jPanelBag.add(jbtnMooring);
 
-    m_jButtons.setPreferredSize(new java.awt.Dimension(350, 55));
+        m_jButtons.setPreferredSize(new java.awt.Dimension(350, 55));
 
-    btnSplit.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/sale_split_sml.png"))); // NOI18N
-    btnSplit.setToolTipText(bundle.getString("tooltip.salesplit")); // NOI18N
-    btnSplit.setEnabled(false);
-    btnSplit.setFocusPainted(false);
-    btnSplit.setFocusable(false);
-    btnSplit.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    btnSplit.setMaximumSize(new java.awt.Dimension(50, 40));
-    btnSplit.setMinimumSize(new java.awt.Dimension(50, 40));
-    btnSplit.setPreferredSize(new java.awt.Dimension(80, 45));
-    btnSplit.setRequestFocusEnabled(false);
-    btnSplit.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        btnSplitActionPerformed(evt);
-      }
-    });
+        btnSplit.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/sale_split_sml.png"))); // NOI18N
+        btnSplit.setToolTipText(bundle.getString("tooltip.salesplit")); // NOI18N
+        btnSplit.setEnabled(false);
+        btnSplit.setFocusPainted(false);
+        btnSplit.setFocusable(false);
+        btnSplit.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        btnSplit.setMaximumSize(new java.awt.Dimension(50, 40));
+        btnSplit.setMinimumSize(new java.awt.Dimension(50, 40));
+        btnSplit.setPreferredSize(new java.awt.Dimension(80, 45));
+        btnSplit.setRequestFocusEnabled(false);
+        btnSplit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSplitActionPerformed(evt);
+            }
+        });
 
-    btnReprint1.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-    btnReprint1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/reprint24.png"))); // NOI18N
-    btnReprint1.setToolTipText(bundle.getString("tooltip.reprintLastTicket")); // NOI18N
-    btnReprint1.setFocusPainted(false);
-    btnReprint1.setFocusable(false);
-    btnReprint1.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    btnReprint1.setMaximumSize(new java.awt.Dimension(50, 40));
-    btnReprint1.setMinimumSize(new java.awt.Dimension(50, 40));
-    btnReprint1.setPreferredSize(new java.awt.Dimension(80, 45));
-    btnReprint1.setRequestFocusEnabled(false);
-    btnReprint1.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        btnReprint1ActionPerformed(evt);
-      }
-    });
+        btnReprint1.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        btnReprint1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/reprint24.png"))); // NOI18N
+        btnReprint1.setToolTipText(bundle.getString("tooltip.reprintLastTicket")); // NOI18N
+        btnReprint1.setFocusPainted(false);
+        btnReprint1.setFocusable(false);
+        btnReprint1.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        btnReprint1.setMaximumSize(new java.awt.Dimension(50, 40));
+        btnReprint1.setMinimumSize(new java.awt.Dimension(50, 40));
+        btnReprint1.setPreferredSize(new java.awt.Dimension(80, 45));
+        btnReprint1.setRequestFocusEnabled(false);
+        btnReprint1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnReprint1ActionPerformed(evt);
+            }
+        });
 
-    j_btnRemotePrt.setFont(new java.awt.Font("Tahoma", 0, 12)); // NOI18N
-    j_btnRemotePrt.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/remote_print.png"))); // NOI18N
-    j_btnRemotePrt.setText(bundle.getString("button.sendorder")); // NOI18N
-    j_btnRemotePrt.setToolTipText(bundle.getString("tooltip.printtoremote")); // NOI18N
-    j_btnRemotePrt.setMargin(new java.awt.Insets(0, 4, 0, 4));
-    j_btnRemotePrt.setMaximumSize(new java.awt.Dimension(50, 40));
-    j_btnRemotePrt.setMinimumSize(new java.awt.Dimension(50, 40));
-    j_btnRemotePrt.setPreferredSize(new java.awt.Dimension(80, 45));
-    j_btnRemotePrt.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        j_btnRemotePrtActionPerformed(evt);
-      }
-    });
+        j_btnRemotePrt.setFont(new java.awt.Font("Tahoma", 0, 12)); // NOI18N
+        j_btnRemotePrt.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/remote_print.png"))); // NOI18N
+        j_btnRemotePrt.setText(bundle.getString("button.sendorder")); // NOI18N
+        j_btnRemotePrt.setToolTipText(bundle.getString("tooltip.printtoremote")); // NOI18N
+        j_btnRemotePrt.setMargin(new java.awt.Insets(0, 4, 0, 4));
+        j_btnRemotePrt.setMaximumSize(new java.awt.Dimension(50, 40));
+        j_btnRemotePrt.setMinimumSize(new java.awt.Dimension(50, 40));
+        j_btnRemotePrt.setPreferredSize(new java.awt.Dimension(80, 45));
+        j_btnRemotePrt.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                j_btnRemotePrtActionPerformed(evt);
+            }
+        });
 
-    jBtnCustomer.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    jBtnCustomer.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/customer.png"))); // NOI18N
-    jBtnCustomer.setToolTipText(bundle.getString("tooltip.salescustomer")); // NOI18N
-    jBtnCustomer.setPreferredSize(new java.awt.Dimension(80, 45));
-    jBtnCustomer.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jBtnCustomerActionPerformed(evt);
-      }
-    });
+        jBtnCustomer.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        jBtnCustomer.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/customer.png"))); // NOI18N
+        jBtnCustomer.setToolTipText(bundle.getString("tooltip.salescustomer")); // NOI18N
+        jBtnCustomer.setPreferredSize(new java.awt.Dimension(80, 45));
+        jBtnCustomer.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jBtnCustomerActionPerformed(evt);
+            }
+        });
 
-    javax.swing.GroupLayout m_jButtonsLayout = new javax.swing.GroupLayout(m_jButtons);
-    m_jButtons.setLayout(m_jButtonsLayout);
-    m_jButtonsLayout.setHorizontalGroup(
+        javax.swing.GroupLayout m_jButtonsLayout = new javax.swing.GroupLayout(m_jButtons);
+        m_jButtons.setLayout(m_jButtonsLayout);
+        m_jButtonsLayout.setHorizontalGroup(
             m_jButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(m_jButtonsLayout.createSequentialGroup()
-                            .addContainerGap()
-                            .addComponent(jBtnCustomer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(btnSplit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(j_btnRemotePrt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(btnReprint1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-    );
-    m_jButtonsLayout.setVerticalGroup(
+            .addGroup(m_jButtonsLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jBtnCustomer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(btnSplit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(j_btnRemotePrt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(btnReprint1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        m_jButtonsLayout.setVerticalGroup(
             m_jButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(m_jButtonsLayout.createSequentialGroup()
-                            .addGap(5, 5, 5)
-                            .addGroup(m_jButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(j_btnRemotePrt, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(btnSplit, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(btnReprint1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jBtnCustomer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-    );
+            .addGroup(m_jButtonsLayout.createSequentialGroup()
+                .addGap(5, 5, 5)
+                .addGroup(m_jButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(j_btnRemotePrt, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(btnSplit, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(btnReprint1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jBtnCustomer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
-    m_jPanelBag.add(m_jButtons);
+        m_jPanelBag.add(m_jButtons);
 
-    m_jOptions.add(m_jPanelBag, java.awt.BorderLayout.PAGE_START);
+        m_jOptions.add(m_jPanelBag, java.awt.BorderLayout.PAGE_START);
 
-    m_jPanelScripts.setPreferredSize(new java.awt.Dimension(200, 60));
-    m_jPanelScripts.setLayout(new java.awt.BorderLayout());
+        m_jPanelScripts.setPreferredSize(new java.awt.Dimension(200, 60));
+        m_jPanelScripts.setLayout(new java.awt.BorderLayout());
 
-    m_jButtonsExt.setPreferredSize(new java.awt.Dimension(20, 60));
+        m_jButtonsExt.setPreferredSize(new java.awt.Dimension(20, 60));
 
-    jPanel1.setMinimumSize(new java.awt.Dimension(235, 50));
-    jPanel1.setPreferredSize(new java.awt.Dimension(10, 55));
-    m_jButtonsExt.add(jPanel1);
+        jPanel1.setMinimumSize(new java.awt.Dimension(235, 50));
+        jPanel1.setPreferredSize(new java.awt.Dimension(10, 55));
+        m_jButtonsExt.add(jPanel1);
 
-    m_jPanelScripts.add(m_jButtonsExt, java.awt.BorderLayout.PAGE_START);
+        m_jPanelScripts.add(m_jButtonsExt, java.awt.BorderLayout.PAGE_START);
 
-    m_jOptions.add(m_jPanelScripts, java.awt.BorderLayout.CENTER);
-    m_jPanelScripts.getAccessibleContext().setAccessibleDescription("");
+        m_jOptions.add(m_jPanelScripts, java.awt.BorderLayout.CENTER);
+        m_jPanelScripts.getAccessibleContext().setAccessibleDescription("");
 
-    m_jPanContainer.add(m_jOptions, java.awt.BorderLayout.NORTH);
+        m_jPanContainer.add(m_jOptions, java.awt.BorderLayout.NORTH);
 
-    m_jPanTicket.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
-    m_jPanTicket.setLayout(new java.awt.BorderLayout());
+        m_jPanTicket.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        m_jPanTicket.setLayout(new java.awt.BorderLayout());
 
-    jPanel5.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-    jPanel5.setPreferredSize(new java.awt.Dimension(75, 270));
-    jPanel5.setLayout(new java.awt.BorderLayout());
+        jPanel5.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        jPanel5.setPreferredSize(new java.awt.Dimension(75, 270));
+        jPanel5.setLayout(new java.awt.BorderLayout());
 
-    jPanel2.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 5, 0, 5));
-    jPanel2.setPreferredSize(new java.awt.Dimension(70, 250));
-    jPanel2.setLayout(new java.awt.GridLayout(0, 1, 5, 5));
+        jPanel2.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 5, 0, 5));
+        jPanel2.setPreferredSize(new java.awt.Dimension(70, 250));
+        jPanel2.setLayout(new java.awt.GridLayout(0, 1, 5, 5));
 
-    m_jDelete.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/editdelete.png"))); // NOI18N
-    m_jDelete.setToolTipText(bundle.getString("tooltip.saleremoveline")); // NOI18N
-    m_jDelete.setFocusPainted(false);
-    m_jDelete.setFocusable(false);
-    m_jDelete.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    m_jDelete.setMaximumSize(new java.awt.Dimension(42, 36));
-    m_jDelete.setMinimumSize(new java.awt.Dimension(42, 36));
-    m_jDelete.setPreferredSize(new java.awt.Dimension(50, 45));
-    m_jDelete.setRequestFocusEnabled(false);
-    m_jDelete.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        m_jDeleteActionPerformed(evt);
-      }
-    });
-    jPanel2.add(m_jDelete);
+        m_jDelete.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/editdelete.png"))); // NOI18N
+        m_jDelete.setToolTipText(bundle.getString("tooltip.saleremoveline")); // NOI18N
+        m_jDelete.setFocusPainted(false);
+        m_jDelete.setFocusable(false);
+        m_jDelete.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        m_jDelete.setMaximumSize(new java.awt.Dimension(42, 36));
+        m_jDelete.setMinimumSize(new java.awt.Dimension(42, 36));
+        m_jDelete.setPreferredSize(new java.awt.Dimension(50, 45));
+        m_jDelete.setRequestFocusEnabled(false);
+        m_jDelete.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                m_jDeleteActionPerformed(evt);
+            }
+        });
+        jPanel2.add(m_jDelete);
 
-    m_jList.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/search32.png"))); // NOI18N
-    m_jList.setToolTipText(bundle.getString("tooltip.saleproductfind")); // NOI18N
-    m_jList.setFocusPainted(false);
-    m_jList.setFocusable(false);
-    m_jList.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    m_jList.setMaximumSize(new java.awt.Dimension(42, 36));
-    m_jList.setMinimumSize(new java.awt.Dimension(42, 36));
-    m_jList.setPreferredSize(new java.awt.Dimension(50, 45));
-    m_jList.setRequestFocusEnabled(false);
-    m_jList.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        m_jListActionPerformed(evt);
-      }
-    });
-    jPanel2.add(m_jList);
+        m_jList.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/search32.png"))); // NOI18N
+        m_jList.setToolTipText(bundle.getString("tooltip.saleproductfind")); // NOI18N
+        m_jList.setFocusPainted(false);
+        m_jList.setFocusable(false);
+        m_jList.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        m_jList.setMaximumSize(new java.awt.Dimension(42, 36));
+        m_jList.setMinimumSize(new java.awt.Dimension(42, 36));
+        m_jList.setPreferredSize(new java.awt.Dimension(50, 45));
+        m_jList.setRequestFocusEnabled(false);
+        m_jList.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                m_jListActionPerformed(evt);
+            }
+        });
+        jPanel2.add(m_jList);
 
-    m_jEditLine.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/sale_editline.png"))); // NOI18N
-    m_jEditLine.setToolTipText(bundle.getString("tooltip.saleeditline")); // NOI18N
-    m_jEditLine.setFocusPainted(false);
-    m_jEditLine.setFocusable(false);
-    m_jEditLine.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    m_jEditLine.setMaximumSize(new java.awt.Dimension(42, 36));
-    m_jEditLine.setMinimumSize(new java.awt.Dimension(42, 36));
-    m_jEditLine.setPreferredSize(new java.awt.Dimension(50, 45));
-    m_jEditLine.setRequestFocusEnabled(false);
-    m_jEditLine.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        m_jEditLineActionPerformed(evt);
-      }
-    });
-    jPanel2.add(m_jEditLine);
+        m_jEditLine.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/sale_editline.png"))); // NOI18N
+        m_jEditLine.setToolTipText(bundle.getString("tooltip.saleeditline")); // NOI18N
+        m_jEditLine.setFocusPainted(false);
+        m_jEditLine.setFocusable(false);
+        m_jEditLine.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        m_jEditLine.setMaximumSize(new java.awt.Dimension(42, 36));
+        m_jEditLine.setMinimumSize(new java.awt.Dimension(42, 36));
+        m_jEditLine.setPreferredSize(new java.awt.Dimension(50, 45));
+        m_jEditLine.setRequestFocusEnabled(false);
+        m_jEditLine.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                m_jEditLineActionPerformed(evt);
+            }
+        });
+        jPanel2.add(m_jEditLine);
 
-    jEditAttributes.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/attributes.png"))); // NOI18N
-    jEditAttributes.setToolTipText(bundle.getString("tooltip.saleattributes")); // NOI18N
-    jEditAttributes.setFocusPainted(false);
-    jEditAttributes.setFocusable(false);
-    jEditAttributes.setMargin(new java.awt.Insets(8, 14, 8, 14));
-    jEditAttributes.setMaximumSize(new java.awt.Dimension(42, 36));
-    jEditAttributes.setMinimumSize(new java.awt.Dimension(42, 36));
-    jEditAttributes.setPreferredSize(new java.awt.Dimension(50, 45));
-    jEditAttributes.setRequestFocusEnabled(false);
-    jEditAttributes.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jEditAttributesActionPerformed(evt);
-      }
-    });
-    jPanel2.add(jEditAttributes);
+        jEditAttributes.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/attributes.png"))); // NOI18N
+        jEditAttributes.setToolTipText(bundle.getString("tooltip.saleattributes")); // NOI18N
+        jEditAttributes.setFocusPainted(false);
+        jEditAttributes.setFocusable(false);
+        jEditAttributes.setMargin(new java.awt.Insets(8, 14, 8, 14));
+        jEditAttributes.setMaximumSize(new java.awt.Dimension(42, 36));
+        jEditAttributes.setMinimumSize(new java.awt.Dimension(42, 36));
+        jEditAttributes.setPreferredSize(new java.awt.Dimension(50, 45));
+        jEditAttributes.setRequestFocusEnabled(false);
+        jEditAttributes.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jEditAttributesActionPerformed(evt);
+            }
+        });
+        jPanel2.add(jEditAttributes);
 
-    jCheckStock.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
-    jCheckStock.setForeground(new java.awt.Color(76, 197, 237));
-    jCheckStock.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/info.png"))); // NOI18N
-    jCheckStock.setToolTipText(bundle.getString("tooltip.salecheckstock")); // NOI18N
-    jCheckStock.setFocusPainted(false);
-    jCheckStock.setFocusable(false);
-    jCheckStock.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-    jCheckStock.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
-    jCheckStock.setMargin(new java.awt.Insets(8, 4, 8, 4));
-    jCheckStock.setMaximumSize(new java.awt.Dimension(42, 36));
-    jCheckStock.setMinimumSize(new java.awt.Dimension(42, 36));
-    jCheckStock.setPreferredSize(new java.awt.Dimension(80, 45));
-    jCheckStock.setRequestFocusEnabled(false);
-    jCheckStock.setVerticalTextPosition(javax.swing.SwingConstants.TOP);
-    jCheckStock.addMouseListener(new java.awt.event.MouseAdapter() {
-      public void mouseClicked(java.awt.event.MouseEvent evt) {
-        jCheckStockMouseClicked(evt);
-      }
-    });
-    jCheckStock.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jCheckStockActionPerformed(evt);
-      }
-    });
-    jPanel2.add(jCheckStock);
+        jCheckStock.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        jCheckStock.setForeground(new java.awt.Color(76, 197, 237));
+        jCheckStock.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/info.png"))); // NOI18N
+        jCheckStock.setToolTipText(bundle.getString("tooltip.salecheckstock")); // NOI18N
+        jCheckStock.setFocusPainted(false);
+        jCheckStock.setFocusable(false);
+        jCheckStock.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        jCheckStock.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jCheckStock.setMargin(new java.awt.Insets(8, 4, 8, 4));
+        jCheckStock.setMaximumSize(new java.awt.Dimension(42, 36));
+        jCheckStock.setMinimumSize(new java.awt.Dimension(42, 36));
+        jCheckStock.setPreferredSize(new java.awt.Dimension(80, 45));
+        jCheckStock.setRequestFocusEnabled(false);
+        jCheckStock.setVerticalTextPosition(javax.swing.SwingConstants.TOP);
+        jCheckStock.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jCheckStockMouseClicked(evt);
+            }
+        });
+        jCheckStock.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jCheckStockActionPerformed(evt);
+            }
+        });
+        jPanel2.add(jCheckStock);
 
-    jPanel5.add(jPanel2, java.awt.BorderLayout.NORTH);
+        jPanel5.add(jPanel2, java.awt.BorderLayout.NORTH);
 
-    m_jPanTicket.add(jPanel5, java.awt.BorderLayout.LINE_START);
+        m_jPanTicket.add(jPanel5, java.awt.BorderLayout.LINE_START);
 
-    m_jPanelCentral.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    m_jPanelCentral.setPreferredSize(new java.awt.Dimension(450, 240));
-    m_jPanelCentral.setLayout(new java.awt.BorderLayout());
+        m_jPanelCentral.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jPanelCentral.setPreferredSize(new java.awt.Dimension(450, 240));
+        m_jPanelCentral.setLayout(new java.awt.BorderLayout());
 
-    jPanel4.setLayout(new java.awt.BorderLayout());
-    jPanel4.add(filler2, java.awt.BorderLayout.LINE_START);
+        jPanel4.setLayout(new java.awt.BorderLayout());
+        jPanel4.add(filler2, java.awt.BorderLayout.LINE_START);
 
-    m_jTicketId.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
-    m_jTicketId.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-    m_jTicketId.setVerticalAlignment(javax.swing.SwingConstants.TOP);
-    m_jTicketId.setOpaque(true);
-    m_jTicketId.setPreferredSize(new java.awt.Dimension(300, 40));
-    m_jTicketId.setRequestFocusEnabled(false);
-    m_jTicketId.setVerticalTextPosition(javax.swing.SwingConstants.TOP);
-    jPanel4.add(m_jTicketId, java.awt.BorderLayout.CENTER);
+        m_jTicketId.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        m_jTicketId.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        m_jTicketId.setVerticalAlignment(javax.swing.SwingConstants.TOP);
+        m_jTicketId.setOpaque(true);
+        m_jTicketId.setPreferredSize(new java.awt.Dimension(270, 40));
+        m_jTicketId.setRequestFocusEnabled(false);
+        m_jTicketId.setVerticalTextPosition(javax.swing.SwingConstants.TOP);
+        jPanel4.add(m_jTicketId, java.awt.BorderLayout.CENTER);
 
-    m_jPanTotals.setPreferredSize(new java.awt.Dimension(375, 60));
-    m_jPanTotals.setLayout(new java.awt.GridLayout(2, 3, 4, 0));
+        m_jPanTotals.setBorder(javax.swing.BorderFactory.createEtchedBorder());
+        m_jPanTotals.setPreferredSize(new java.awt.Dimension(375, 60));
+        m_jPanTotals.setLayout(new java.awt.GridLayout(2, 3, 4, 0));
 
-    m_jLblTotalEuros3.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
-    m_jLblTotalEuros3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jLblTotalEuros3.setLabelFor(m_jSubtotalEuros);
-    m_jLblTotalEuros3.setText(AppLocal.getIntString("label.subtotalcash")); // NOI18N
-    m_jPanTotals.add(m_jLblTotalEuros3);
+        lblTaxIva.setFont(new java.awt.Font("Noto Sans", 1, 15)); // NOI18N
+        lblTaxIva.setForeground(new java.awt.Color(0, 102, 255));
+        lblTaxIva.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        lblTaxIva.setText("Sub. IVA%");
+        m_jPanTotals.add(lblTaxIva);
 
-    m_jLblTotalEuros2.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
-    m_jLblTotalEuros2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jLblTotalEuros2.setLabelFor(m_jSubtotalEuros);
-    m_jLblTotalEuros2.setText(AppLocal.getIntString("label.taxcash")); // NOI18N
-    m_jPanTotals.add(m_jLblTotalEuros2);
+        lblSubtotalTax0.setFont(new java.awt.Font("Noto Sans", 1, 15)); // NOI18N
+        lblSubtotalTax0.setForeground(new java.awt.Color(0, 102, 255));
+        lblSubtotalTax0.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        lblSubtotalTax0.setText("Sub.  0%");
+        m_jPanTotals.add(lblSubtotalTax0);
 
-    m_jLblTotalEuros1.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
-    m_jLblTotalEuros1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jLblTotalEuros1.setLabelFor(m_jTotalEuros);
-    m_jLblTotalEuros1.setText(AppLocal.getIntString("label.totalcash")); // NOI18N
-    m_jPanTotals.add(m_jLblTotalEuros1);
+        m_jLblTotalEuros3.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        m_jLblTotalEuros3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jLblTotalEuros3.setLabelFor(m_jSubtotalEuros);
+        m_jLblTotalEuros3.setText(AppLocal.getIntString("label.subtotalcash")); // NOI18N
+        m_jPanTotals.add(m_jLblTotalEuros3);
 
-    m_jSubtotalEuros.setBackground(m_jEditLine.getBackground());
-    m_jSubtotalEuros.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-    m_jSubtotalEuros.setForeground(m_jEditLine.getForeground());
-    m_jSubtotalEuros.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jSubtotalEuros.setLabelFor(m_jSubtotalEuros);
-    m_jSubtotalEuros.setToolTipText(bundle.getString("tooltip.salesubtotal")); // NOI18N
-    m_jSubtotalEuros.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
-    m_jSubtotalEuros.setMaximumSize(new java.awt.Dimension(125, 25));
-    m_jSubtotalEuros.setMinimumSize(new java.awt.Dimension(80, 25));
-    m_jSubtotalEuros.setPreferredSize(new java.awt.Dimension(80, 25));
-    m_jSubtotalEuros.setRequestFocusEnabled(false);
-    m_jPanTotals.add(m_jSubtotalEuros);
+        m_jLblTotalEuros2.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        m_jLblTotalEuros2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jLblTotalEuros2.setLabelFor(m_jSubtotalEuros);
+        m_jLblTotalEuros2.setText(AppLocal.getIntString("label.taxcash")); // NOI18N
+        m_jPanTotals.add(m_jLblTotalEuros2);
 
-    m_jTaxesEuros.setBackground(m_jEditLine.getBackground());
-    m_jTaxesEuros.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-    m_jTaxesEuros.setForeground(m_jEditLine.getForeground());
-    m_jTaxesEuros.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jTaxesEuros.setLabelFor(m_jTaxesEuros);
-    m_jTaxesEuros.setToolTipText(bundle.getString("tooltip.saletax")); // NOI18N
-    m_jTaxesEuros.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
-    m_jTaxesEuros.setMaximumSize(new java.awt.Dimension(125, 25));
-    m_jTaxesEuros.setMinimumSize(new java.awt.Dimension(80, 25));
-    m_jTaxesEuros.setPreferredSize(new java.awt.Dimension(80, 25));
-    m_jTaxesEuros.setRequestFocusEnabled(false);
-    m_jPanTotals.add(m_jTaxesEuros);
+        m_jLblTotalEuros1.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        m_jLblTotalEuros1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jLblTotalEuros1.setLabelFor(m_jTotalEuros);
+        m_jLblTotalEuros1.setText(AppLocal.getIntString("label.totalcash")); // NOI18N
+        m_jPanTotals.add(m_jLblTotalEuros1);
 
-    m_jTotalEuros.setBackground(m_jEditLine.getBackground());
-    m_jTotalEuros.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
-    m_jTotalEuros.setForeground(m_jEditLine.getForeground());
-    m_jTotalEuros.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jTotalEuros.setLabelFor(m_jTotalEuros);
-    m_jTotalEuros.setToolTipText(bundle.getString("tooltip.saletotal")); // NOI18N
-    m_jTotalEuros.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
-    m_jTotalEuros.setMaximumSize(new java.awt.Dimension(125, 25));
-    m_jTotalEuros.setMinimumSize(new java.awt.Dimension(80, 25));
-    m_jTotalEuros.setPreferredSize(new java.awt.Dimension(100, 25));
-    m_jTotalEuros.setRequestFocusEnabled(false);
-    m_jPanTotals.add(m_jTotalEuros);
+        m_jSubtotalIVA.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        m_jSubtotalIVA.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jSubtotalIVA.setToolTipText(bundle.getString("tooltip.salesubtotal")); // NOI18N
+        m_jSubtotalIVA.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
+        m_jSubtotalIVA.setMaximumSize(new java.awt.Dimension(125, 25));
+        m_jSubtotalIVA.setMinimumSize(new java.awt.Dimension(80, 25));
+        m_jSubtotalIVA.setPreferredSize(new java.awt.Dimension(80, 25));
+        m_jSubtotalIVA.setRequestFocusEnabled(false);
+        m_jPanTotals.add(m_jSubtotalIVA);
 
-    jPanel4.add(m_jPanTotals, java.awt.BorderLayout.LINE_END);
+        m_jSubtotalIVA_0.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        m_jSubtotalIVA_0.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jSubtotalIVA_0.setToolTipText(bundle.getString("tooltip.salesubtotal")); // NOI18N
+        m_jSubtotalIVA_0.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
+        m_jSubtotalIVA_0.setMaximumSize(new java.awt.Dimension(125, 25));
+        m_jSubtotalIVA_0.setMinimumSize(new java.awt.Dimension(80, 25));
+        m_jSubtotalIVA_0.setPreferredSize(new java.awt.Dimension(80, 25));
+        m_jSubtotalIVA_0.setRequestFocusEnabled(false);
+        m_jPanTotals.add(m_jSubtotalIVA_0);
 
-    m_jPanelCentral.add(jPanel4, java.awt.BorderLayout.SOUTH);
+        m_jSubtotalEuros.setBackground(m_jEditLine.getBackground());
+        m_jSubtotalEuros.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        m_jSubtotalEuros.setForeground(m_jEditLine.getForeground());
+        m_jSubtotalEuros.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jSubtotalEuros.setLabelFor(m_jSubtotalEuros);
+        m_jSubtotalEuros.setToolTipText(bundle.getString("tooltip.salesubtotal")); // NOI18N
+        m_jSubtotalEuros.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
+        m_jSubtotalEuros.setMaximumSize(new java.awt.Dimension(125, 25));
+        m_jSubtotalEuros.setMinimumSize(new java.awt.Dimension(80, 25));
+        m_jSubtotalEuros.setPreferredSize(new java.awt.Dimension(80, 25));
+        m_jSubtotalEuros.setRequestFocusEnabled(false);
+        m_jPanTotals.add(m_jSubtotalEuros);
 
-    m_jPanTicket.add(m_jPanelCentral, java.awt.BorderLayout.CENTER);
+        m_jTaxesEuros.setBackground(m_jEditLine.getBackground());
+        m_jTaxesEuros.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
+        m_jTaxesEuros.setForeground(m_jEditLine.getForeground());
+        m_jTaxesEuros.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jTaxesEuros.setLabelFor(m_jTaxesEuros);
+        m_jTaxesEuros.setToolTipText(bundle.getString("tooltip.saletax")); // NOI18N
+        m_jTaxesEuros.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
+        m_jTaxesEuros.setMaximumSize(new java.awt.Dimension(125, 25));
+        m_jTaxesEuros.setMinimumSize(new java.awt.Dimension(80, 25));
+        m_jTaxesEuros.setPreferredSize(new java.awt.Dimension(80, 25));
+        m_jTaxesEuros.setRequestFocusEnabled(false);
+        m_jPanTotals.add(m_jTaxesEuros);
 
-    m_jPanContainer.add(m_jPanTicket, java.awt.BorderLayout.CENTER);
+        m_jTotalEuros.setBackground(m_jEditLine.getBackground());
+        m_jTotalEuros.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
+        m_jTotalEuros.setForeground(m_jEditLine.getForeground());
+        m_jTotalEuros.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jTotalEuros.setLabelFor(m_jTotalEuros);
+        m_jTotalEuros.setToolTipText(bundle.getString("tooltip.saletotal")); // NOI18N
+        m_jTotalEuros.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(153, 153, 153), 1, true));
+        m_jTotalEuros.setMaximumSize(new java.awt.Dimension(125, 25));
+        m_jTotalEuros.setMinimumSize(new java.awt.Dimension(80, 25));
+        m_jTotalEuros.setPreferredSize(new java.awt.Dimension(100, 25));
+        m_jTotalEuros.setRequestFocusEnabled(false);
+        m_jPanTotals.add(m_jTotalEuros);
 
-    m_jContEntries.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-    m_jContEntries.setMinimumSize(new java.awt.Dimension(300, 350));
-    m_jContEntries.setLayout(new java.awt.BorderLayout());
+        jPanel4.add(m_jPanTotals, java.awt.BorderLayout.LINE_END);
 
-    m_jPanEntries.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    m_jPanEntries.setPreferredSize(new java.awt.Dimension(300, 350));
-    m_jPanEntries.setLayout(new javax.swing.BoxLayout(m_jPanEntries, javax.swing.BoxLayout.Y_AXIS));
+        m_jPanelCentral.add(jPanel4, java.awt.BorderLayout.SOUTH);
 
-    m_jNumberKeys.setMinimumSize(new java.awt.Dimension(300, 300));
-    m_jNumberKeys.setPreferredSize(new java.awt.Dimension(250, 250));
-    m_jNumberKeys.addJNumberEventListener(new com.unicenta.beans.JNumberEventListener() {
-      public void keyPerformed(com.unicenta.beans.JNumberEvent evt) {
-        m_jNumberKeysKeyPerformed(evt);
-      }
-    });
-    m_jPanEntries.add(m_jNumberKeys);
+        m_jPanTicket.add(m_jPanelCentral, java.awt.BorderLayout.CENTER);
 
-    jPanel9.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        m_jPanContainer.add(m_jPanTicket, java.awt.BorderLayout.CENTER);
 
-    m_jaddtax.setBorder(null);
-    m_jaddtax.setToolTipText(bundle.getString("tooltip.switchtax")); // NOI18N
-    m_jaddtax.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    m_jaddtax.setPreferredSize(new java.awt.Dimension(60, 30));
-    m_jaddtax.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        m_jaddtaxActionPerformed(evt);
-      }
-    });
+        m_jContEntries.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        m_jContEntries.setMinimumSize(new java.awt.Dimension(300, 350));
+        m_jContEntries.setLayout(new java.awt.BorderLayout());
 
-    m_jPrice.setFont(new java.awt.Font("Arial", 1, 16)); // NOI18N
-    m_jPrice.setForeground(new java.awt.Color(76, 197, 237));
-    m_jPrice.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-    m_jPrice.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(76, 197, 237)), javax.swing.BorderFactory.createEmptyBorder(1, 4, 1, 4)));
-    m_jPrice.setOpaque(true);
-    m_jPrice.setPreferredSize(new java.awt.Dimension(100, 25));
-    m_jPrice.setRequestFocusEnabled(false);
+        m_jPanEntries.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jPanEntries.setPreferredSize(new java.awt.Dimension(300, 350));
+        m_jPanEntries.setLayout(new javax.swing.BoxLayout(m_jPanEntries, javax.swing.BoxLayout.Y_AXIS));
 
-    m_jPor.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
-    m_jPor.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    m_jPor.setRequestFocusEnabled(false);
+        m_jNumberKeys.setMinimumSize(new java.awt.Dimension(300, 300));
+        m_jNumberKeys.setPreferredSize(new java.awt.Dimension(250, 250));
+        m_jNumberKeys.addJNumberEventListener(new com.unicenta.beans.JNumberEventListener() {
+            public void keyPerformed(com.unicenta.beans.JNumberEvent evt) {
+                m_jNumberKeysKeyPerformed(evt);
+            }
+        });
+        m_jPanEntries.add(m_jNumberKeys);
 
-    m_jEnter.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/barcode.png"))); // NOI18N
-    m_jEnter.setToolTipText(bundle.getString("tooltip.salebarcode")); // NOI18N
-    m_jEnter.setFocusPainted(false);
-    m_jEnter.setFocusable(false);
-    m_jEnter.setPreferredSize(new java.awt.Dimension(80, 45));
-    m_jEnter.setRequestFocusEnabled(false);
-    m_jEnter.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        m_jEnterActionPerformed(evt);
-      }
-    });
+        jPanel9.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-    m_jTax.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    m_jTax.setToolTipText(bundle.getString("tooltip.salestaxswitch")); // NOI18N
-    m_jTax.setFocusable(false);
-    m_jTax.setPreferredSize(new java.awt.Dimension(28, 25));
-    m_jTax.setRequestFocusEnabled(false);
+        m_jaddtax.setBorder(null);
+        m_jaddtax.setToolTipText(bundle.getString("tooltip.switchtax")); // NOI18N
+        m_jaddtax.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jaddtax.setPreferredSize(new java.awt.Dimension(60, 30));
+        m_jaddtax.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                m_jaddtaxActionPerformed(evt);
+            }
+        });
 
-    m_jKeyFactory.setEditable(false);
-    m_jKeyFactory.setFont(new java.awt.Font("Arial", 0, 11)); // NOI18N
-    m_jKeyFactory.setForeground(javax.swing.UIManager.getDefaults().getColor("Panel.background"));
-    m_jKeyFactory.setAutoscrolls(false);
-    m_jKeyFactory.setBorder(null);
-    m_jKeyFactory.setCaretColor(javax.swing.UIManager.getDefaults().getColor("Panel.background"));
-    m_jKeyFactory.setMinimumSize(new java.awt.Dimension(0, 0));
-    m_jKeyFactory.setPreferredSize(new java.awt.Dimension(1, 1));
-    m_jKeyFactory.setRequestFocusEnabled(false);
-    m_jKeyFactory.setVerifyInputWhenFocusTarget(false);
-    m_jKeyFactory.addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyTyped(java.awt.event.KeyEvent evt) {
-        m_jKeyFactoryKeyTyped(evt);
-      }
-    });
+        m_jPrice.setFont(new java.awt.Font("Arial", 1, 16)); // NOI18N
+        m_jPrice.setForeground(new java.awt.Color(76, 197, 237));
+        m_jPrice.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        m_jPrice.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(76, 197, 237)), javax.swing.BorderFactory.createEmptyBorder(1, 4, 1, 4)));
+        m_jPrice.setOpaque(true);
+        m_jPrice.setPreferredSize(new java.awt.Dimension(100, 25));
+        m_jPrice.setRequestFocusEnabled(false);
 
-    javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
-    jPanel9.setLayout(jPanel9Layout);
-    jPanel9Layout.setHorizontalGroup(
+        m_jPor.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
+        m_jPor.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        m_jPor.setRequestFocusEnabled(false);
+
+        m_jEnter.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/barcode.png"))); // NOI18N
+        m_jEnter.setToolTipText(bundle.getString("tooltip.salebarcode")); // NOI18N
+        m_jEnter.setFocusPainted(false);
+        m_jEnter.setFocusable(false);
+        m_jEnter.setPreferredSize(new java.awt.Dimension(80, 45));
+        m_jEnter.setRequestFocusEnabled(false);
+        m_jEnter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                m_jEnterActionPerformed(evt);
+            }
+        });
+
+        m_jTax.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        m_jTax.setToolTipText(bundle.getString("tooltip.salestaxswitch")); // NOI18N
+        m_jTax.setFocusable(false);
+        m_jTax.setPreferredSize(new java.awt.Dimension(28, 25));
+        m_jTax.setRequestFocusEnabled(false);
+
+        m_jKeyFactory.setEditable(false);
+        m_jKeyFactory.setFont(new java.awt.Font("Arial", 0, 11)); // NOI18N
+        m_jKeyFactory.setForeground(javax.swing.UIManager.getDefaults().getColor("Panel.background"));
+        m_jKeyFactory.setAutoscrolls(false);
+        m_jKeyFactory.setBorder(null);
+        m_jKeyFactory.setCaretColor(javax.swing.UIManager.getDefaults().getColor("Panel.background"));
+        m_jKeyFactory.setMinimumSize(new java.awt.Dimension(0, 0));
+        m_jKeyFactory.setPreferredSize(new java.awt.Dimension(1, 1));
+        m_jKeyFactory.setRequestFocusEnabled(false);
+        m_jKeyFactory.setVerifyInputWhenFocusTarget(false);
+        m_jKeyFactory.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                m_jKeyFactoryKeyTyped(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
+        jPanel9.setLayout(jPanel9Layout);
+        jPanel9Layout.setHorizontalGroup(
             jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel9Layout.createSequentialGroup()
+                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(m_jPor)
+                    .addComponent(m_jKeyFactory, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel9Layout.createSequentialGroup()
-                            .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(m_jPor)
-                                    .addComponent(m_jKeyFactory, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 7, Short.MAX_VALUE)
-                            .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanel9Layout.createSequentialGroup()
-                                            .addComponent(m_jaddtax, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addGap(7, 7, 7)
-                                            .addComponent(m_jTax, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
-                                    .addGroup(jPanel9Layout.createSequentialGroup()
-                                            .addComponent(m_jPrice, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addGap(5, 5, 5)))
-                            .addComponent(m_jEnter, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addContainerGap())
-    );
-    jPanel9Layout.setVerticalGroup(
+                        .addComponent(m_jaddtax, javax.swing.GroupLayout.DEFAULT_SIZE, 110, Short.MAX_VALUE)
+                        .addGap(7, 7, 7)
+                        .addComponent(m_jTax, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
+                    .addGroup(jPanel9Layout.createSequentialGroup()
+                        .addComponent(m_jPrice, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(5, 5, 5)))
+                .addComponent(m_jEnter, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        jPanel9Layout.setVerticalGroup(
             jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel9Layout.createSequentialGroup()
-                            .addComponent(m_jEnter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGap(0, 0, Short.MAX_VALUE))
-                    .addGroup(jPanel9Layout.createSequentialGroup()
-                            .addComponent(m_jPrice, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 7, Short.MAX_VALUE)
-                            .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(m_jTax, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(m_jaddtax, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel9Layout.createSequentialGroup()
-                            .addComponent(m_jPor)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(m_jKeyFactory, javax.swing.GroupLayout.PREFERRED_SIZE, 1, javax.swing.GroupLayout.PREFERRED_SIZE))
-    );
+            .addGroup(jPanel9Layout.createSequentialGroup()
+                .addComponent(m_jEnter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+            .addGroup(jPanel9Layout.createSequentialGroup()
+                .addComponent(m_jPrice, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 7, Short.MAX_VALUE)
+                .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(m_jTax, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(m_jaddtax, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel9Layout.createSequentialGroup()
+                .addComponent(m_jPor)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(m_jKeyFactory, javax.swing.GroupLayout.PREFERRED_SIZE, 1, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
 
-    m_jPanEntries.add(jPanel9);
+        m_jPanEntries.add(jPanel9);
 
-    m_jContEntries.add(m_jPanEntries, java.awt.BorderLayout.NORTH);
+        m_jContEntries.add(m_jPanEntries, java.awt.BorderLayout.NORTH);
 
-    m_jPanEntriesE.setLayout(new java.awt.BorderLayout());
-    m_jContEntries.add(m_jPanEntriesE, java.awt.BorderLayout.LINE_END);
+        m_jPanEntriesE.setLayout(new java.awt.BorderLayout());
+        m_jContEntries.add(m_jPanEntriesE, java.awt.BorderLayout.LINE_END);
 
-    m_jPanContainer.add(m_jContEntries, java.awt.BorderLayout.LINE_END);
+        m_jPanContainer.add(m_jContEntries, java.awt.BorderLayout.LINE_END);
 
-    catcontainer.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
-    catcontainer.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-    catcontainer.setLayout(new java.awt.BorderLayout());
-    m_jPanContainer.add(catcontainer, java.awt.BorderLayout.SOUTH);
+        catcontainer.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        catcontainer.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+        catcontainer.setLayout(new java.awt.BorderLayout());
+        m_jPanContainer.add(catcontainer, java.awt.BorderLayout.SOUTH);
 
-    add(m_jPanContainer, "ticket");
-  }// </editor-fold>//GEN-END:initComponents
+        add(m_jPanContainer, "ticket");
+    }// </editor-fold>//GEN-END:initComponents
 
   private void m_jbtnScaleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jbtnScaleActionPerformed
 
@@ -3378,53 +3685,57 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
     jPanContainerFocusLost(evt);
   }//GEN-LAST:event_m_jPanContainerFocusLost
 
-  // Variables declaration - do not modify//GEN-BEGIN:variables
-  private javax.swing.JButton btnReprint1;
-  private javax.swing.JButton btnSplit;
-  private javax.swing.JPanel catcontainer;
-  private javax.swing.Box.Filler filler2;
-  private javax.swing.JButton jBtnCustomer;
-  private javax.swing.JButton jCheckStock;
-  private javax.swing.JButton jEditAttributes;
-  private javax.swing.JPanel jPanel1;
-  private javax.swing.JPanel jPanel2;
-  private javax.swing.JPanel jPanel4;
-  private javax.swing.JPanel jPanel5;
-  private javax.swing.JPanel jPanel9;
-  private javax.swing.JToggleButton jTBtnShow;
-  private javax.swing.JButton j_btnRemotePrt;
-  private javax.swing.JButton jbtnMooring;
-  private javax.swing.JPanel m_jButtons;
-  private javax.swing.JPanel m_jButtonsExt;
-  private javax.swing.JPanel m_jContEntries;
-  private javax.swing.JButton m_jDelete;
-  private javax.swing.JButton m_jEditLine;
-  private javax.swing.JButton m_jEnter;
-  private javax.swing.JTextField m_jKeyFactory;
-  private javax.swing.JLabel m_jLblTotalEuros1;
-  private javax.swing.JLabel m_jLblTotalEuros2;
-  private javax.swing.JLabel m_jLblTotalEuros3;
-  private javax.swing.JButton m_jList;
-  private com.unicenta.beans.JNumberKeys m_jNumberKeys;
-  private javax.swing.JPanel m_jOptions;
-  private javax.swing.JPanel m_jPanContainer;
-  private javax.swing.JPanel m_jPanEntries;
-  private javax.swing.JPanel m_jPanEntriesE;
-  private javax.swing.JPanel m_jPanTicket;
-  private javax.swing.JPanel m_jPanTotals;
-  private javax.swing.JPanel m_jPanelBag;
-  private javax.swing.JPanel m_jPanelCentral;
-  private javax.swing.JPanel m_jPanelScripts;
-  private javax.swing.JLabel m_jPor;
-  private javax.swing.JLabel m_jPrice;
-  private javax.swing.JLabel m_jSubtotalEuros;
-  private javax.swing.JComboBox m_jTax;
-  private javax.swing.JLabel m_jTaxesEuros;
-  private javax.swing.JLabel m_jTicketId;
-  private javax.swing.JLabel m_jTotalEuros;
-  private com.alee.extended.button.WebSwitch m_jaddtax;
-  private javax.swing.JButton m_jbtnScale;
-  // End of variables declaration//GEN-END:variables
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnReprint1;
+    private javax.swing.JButton btnSplit;
+    private javax.swing.JPanel catcontainer;
+    private javax.swing.Box.Filler filler2;
+    private javax.swing.JButton jBtnCustomer;
+    private javax.swing.JButton jCheckStock;
+    private javax.swing.JButton jEditAttributes;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
+    private javax.swing.JPanel jPanel9;
+    private javax.swing.JToggleButton jTBtnShow;
+    private javax.swing.JButton j_btnRemotePrt;
+    private javax.swing.JButton jbtnMooring;
+    private javax.swing.JLabel lblSubtotalTax0;
+    private javax.swing.JLabel lblTaxIva;
+    private javax.swing.JPanel m_jButtons;
+    private javax.swing.JPanel m_jButtonsExt;
+    private javax.swing.JPanel m_jContEntries;
+    private javax.swing.JButton m_jDelete;
+    private javax.swing.JButton m_jEditLine;
+    private javax.swing.JButton m_jEnter;
+    private javax.swing.JTextField m_jKeyFactory;
+    private javax.swing.JLabel m_jLblTotalEuros1;
+    private javax.swing.JLabel m_jLblTotalEuros2;
+    private javax.swing.JLabel m_jLblTotalEuros3;
+    private javax.swing.JButton m_jList;
+    private com.unicenta.beans.JNumberKeys m_jNumberKeys;
+    private javax.swing.JPanel m_jOptions;
+    private javax.swing.JPanel m_jPanContainer;
+    private javax.swing.JPanel m_jPanEntries;
+    private javax.swing.JPanel m_jPanEntriesE;
+    private javax.swing.JPanel m_jPanTicket;
+    private javax.swing.JPanel m_jPanTotals;
+    private javax.swing.JPanel m_jPanelBag;
+    private javax.swing.JPanel m_jPanelCentral;
+    private javax.swing.JPanel m_jPanelScripts;
+    private javax.swing.JLabel m_jPor;
+    private javax.swing.JLabel m_jPrice;
+    private javax.swing.JLabel m_jSubtotalEuros;
+    private javax.swing.JLabel m_jSubtotalIVA;
+    private javax.swing.JLabel m_jSubtotalIVA_0;
+    private javax.swing.JComboBox m_jTax;
+    private javax.swing.JLabel m_jTaxesEuros;
+    private javax.swing.JLabel m_jTicketId;
+    private javax.swing.JLabel m_jTotalEuros;
+    private com.alee.extended.button.WebSwitch m_jaddtax;
+    private javax.swing.JButton m_jbtnScale;
+    // End of variables declaration//GEN-END:variables
 
 /* Remote Orders Display
     We only know about uniCenta oPOS orders and won't try and handle any
