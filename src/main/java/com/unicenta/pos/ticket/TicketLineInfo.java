@@ -487,5 +487,8 @@ public class TicketLineInfo implements SerializableWrite, SerializableRead, Seri
     public void setUpdated(Boolean value) {
         updated = value;
     }
-   
+
+    public String printTaxFlag() {
+        return tax.getRate() == 0 ? " " : "i";
+    }
 }

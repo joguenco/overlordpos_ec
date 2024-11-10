@@ -1608,14 +1608,23 @@ public class DataLogicSales extends BeanFactoryDataSingle {
             @Override
             public Object transact() throws BasicException {
 
+                String ticketCodeType = ticket.getCode();
+
                 // Set Receipt Id
                 if (ticket.getTicketId() == 0) {
                     switch (ticket.getTicketType()) {
                         case TicketInfo.RECEIPT_NORMAL:
-                            ticket.setTicketId(getNextTicketIndex());
+                            ticket.setTicketId(
+                                    getNextTicketIndex(
+                                            ticket.getUser().getId(),
+                                            ticketCodeType)
+                            );
                             break;
                         case TicketInfo.RECEIPT_REFUND:
-                            ticket.setTicketId(getNextTicketRefundIndex());
+                            ticket.setTicketId(getNextTicketRefundIndex(
+                                    ticket.getUser().getId(),
+                                    ticketCodeType)
+                            );
                             break;
                         case TicketInfo.RECEIPT_PAYMENT:
                             ticket.setTicketId(getNextTicketPaymentIndex());
@@ -1651,20 +1660,30 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                         });
 
                 // new ticket
-                new PreparedSentence(s
-                        , "INSERT INTO tickets (ID, TICKETTYPE, TICKETID, PERSON, CUSTOMER, STATUS) "
-                        + "VALUES (?, ?, ?, ?, ?, ?)"
-                        , SerializerWriteParams.INSTANCE )
+                ticket.setSerieNumber(
+                        ticket.getSerie()
+                                .concat(String.format(ticket.getFormatNumberDigits(), ticket.getTicketId()))
+                );
+                new PreparedSentence(s,
+                        "INSERT INTO tickets (ID, TICKETTYPE, TICKETID, PERSON, CUSTOMER, STATUS, SERIE_NUMBER, CODE, ACCESS_KEY, TICKETS_ID) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        SerializerWriteParams.INSTANCE)
                         .exec(new DataParams() {
 
                             @Override
                             public void writeValues() throws BasicException {
+                                ticket.buildAccessKey();
+                                
                                 setString(1, ticket.getId());
                                 setInt(2, ticket.getTicketType());
                                 setInt(3, ticket.getTicketId());
                                 setString(4, ticket.getUser().getId());
                                 setString(5, ticket.getCustomerId());
                                 setInt(6, ticket.getTicketStatus());
+                                setString(7, ticket.getSerieNumber());
+                                setString(8, ticketCodeType);
+                                setString(9, ticket.getAccessKey());
+                                setString(10, ticket.getTicketTicketId());
                             }
                         });
 
@@ -1904,12 +1923,27 @@ public class DataLogicSales extends BeanFactoryDataSingle {
     }
 
     /**
+     * Get sequence by user or people
+     *
+     * @param peopleId
+     * @param code
+     * @return
+     * @throws BasicException
+     */
+    public final Integer getNextTicketIndex(String peopleId, String code) throws BasicException {
+        return (Integer) s.DB.getSequenceSentence(s, "ticketsnum", peopleId, code).find();
+    }
+    /**
      *
      * @return
      * @throws BasicException
      */
     public final Integer getNextTicketRefundIndex() throws BasicException {
         return (Integer) s.DB.getSequenceSentence(s, "ticketsnum_refund").find();
+    }
+    
+    public final Integer getNextTicketRefundIndex(String peopleId, String code) throws BasicException {
+        return (Integer) s.DB.getSequenceSentence(s, "ticketsnum_refund", peopleId, code).find();
     }
 
     /**

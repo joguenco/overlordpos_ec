@@ -104,5 +104,17 @@ public class TicketTaxInfo {
      */
     public String printTotal() {
         return Formats.CURRENCY.formatValue(getTotal());
-    }    
+    }
+
+    public String printTaxInfo() {
+
+        if (tax.getRate() == 0) {
+            return "Tarifa 0%";
+        } else if (tax.getRate() > 0 && getSubTotal() > 0) {
+            int value = (int) Math.round((tax.getRate() * 100));
+            return "Tarifa " + value + "% (i)";
+        }
+
+        return "";
+    }
 }
