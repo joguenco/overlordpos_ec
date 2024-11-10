@@ -1954,9 +1954,11 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                 dlSales.saveTicket(ticket, m_App.getInventoryLocation());
                 String lastTicketNumber = Integer.toString(ticket.getTicketId());
                 String lastTicketType = Integer.toString(ticket.getTicketType());
+                String lastTicketSerieNumber = ticket.getSerie().concat(String.format(ticket.getFormatNumberDigits(), ticket.getTicketId()));
                 m_config.setProperty("lastticket.number", lastTicketNumber);
                 m_config.setProperty("lastticket.type", lastTicketType);
-                m_config.setLastTicket(lastTicketNumber, lastTicketType);
+                m_config.setProperty("lastticket.serieNumber", lastTicketSerieNumber);
+                m_config.setLastTicket(lastTicketNumber, lastTicketType, lastTicketSerieNumber);
 
               } catch (BasicException eData) {
                 MessageInf msg = new MessageInf(MessageInf.SGN_NOTICE, AppLocal.getIntString("message.nosaveticket"), eData);
@@ -3379,7 +3381,8 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
       try {
         TicketInfo ticket = dlSales.loadTicket(
                 Integer.parseInt((m_config.getProperty("lastticket.type"))),
-                Integer.parseInt((m_config.getProperty("lastticket.number"))));
+                Integer.parseInt((m_config.getProperty("lastticket.number"))),
+                m_config.getProperty("lastticket.serieNumber"));
         if (ticket == null) {
           JFrame frame = new JFrame();
           JOptionPane.showMessageDialog(frame,

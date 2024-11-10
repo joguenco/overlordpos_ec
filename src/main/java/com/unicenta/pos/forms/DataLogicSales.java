@@ -1084,13 +1084,15 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                         + "C.NAME, "
                         + "SUM(PM.TOTAL), "
                         + "SUM(T.STATUS), "
-                        + "PM.notes "
+//                        + "PM.notes, "
+                        + "concat(T.code, ' ', T.serie_number) as document, "
+                        + "T.serie_number "
                         + "FROM receipts R "
                         + "JOIN tickets T ON R.ID = T.ID LEFT OUTER JOIN payments PM "
                         + "ON R.ID = PM.RECEIPT LEFT OUTER JOIN customers C "
                         + "ON C.ID = T.CUSTOMER LEFT OUTER JOIN people P ON T.PERSON = P.ID "
                         + "WHERE ?(QBF_FILTER) "
-                        + "GROUP BY T.ID, T.TICKETID, T.TICKETTYPE, R.DATENEW, P.NAME, C.NAME, PM.notes "
+                        + "GROUP BY T.ID, T.TICKETID, T.TICKETTYPE, R.DATENEW, P.NAME, C.NAME, concat(T.code, ' ', T.serie_number), T.serie_number "
                         + "ORDER BY R.DATENEW DESC, T.TICKETID",
                 new String[]{
                         "T.TICKETID", "T.TICKETTYPE", "PM.TOTAL", "R.DATENEW", "R.DATENEW", "P.NAME", "C.NAME", "PM.NOTES"})
@@ -1141,7 +1143,9 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                 + "PARENTID, "
                 + "RATE, "
                 + "RATECASCADE, "
-                + "RATEORDER "
+                + "RATEORDER, "
+                + "LEGALCODE, "
+                + "DATESTART "
                 + "FROM taxes "
                 + "ORDER BY NAME"
                 , null
@@ -1153,7 +1157,9 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                 dr.getString(5),
                 dr.getDouble(6),
                 dr.getBoolean(7),
-                dr.getInt(8)));
+                dr.getInt(8),
+                dr.getString(9),
+                dr.getTimestamp(10)));
     }
 
     /**
@@ -1544,7 +1550,10 @@ public class DataLogicSales extends BeanFactoryDataSingle {
      * @return
      * @throws BasicException
      */
-    public final TicketInfo loadTicket(final int tickettype, final int ticketid) throws BasicException {
+    public final TicketInfo loadTicket(
+            final int tickettype, 
+            final int ticketid,
+            final String serieNumber) throws BasicException {
         TicketInfo ticket = (TicketInfo) new PreparedSentence(s
                 , "SELECT "
                 + "T.ID, "
@@ -1556,19 +1565,23 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                 + "P.ID, "
                 + "P.NAME, "
                 + "T.CUSTOMER, "
-                + "T.STATUS "
+                + "T.STATUS, "
+                + "T.CODE, "
+                + "T.SERIE_NUMBER "
                 + "FROM receipts R "
                 + "JOIN tickets T ON R.ID = T.ID "
                 + "LEFT OUTER JOIN people P ON T.PERSON = P.ID "
                 + "WHERE T.TICKETTYPE = ? AND T.TICKETID = ? "
-                + "ORDER BY R.DATENEW DESC"
-                , SerializerWriteParams.INSTANCE
-                , new SerializerReadClass(TicketInfo.class))
+                + "AND T.SERIE_NUMBER = ? "
+                + "ORDER BY R.DATENEW DESC",
+                SerializerWriteParams.INSTANCE,
+                new SerializerReadClass(TicketInfo.class))
                 .find(new DataParams() {
                     @Override
                     public void writeValues() throws BasicException {
                         setInt(1, tickettype);
                         setInt(2, ticketid);
+                        setString(3, serieNumber);
                     }});
 
         if (ticket != null) {
@@ -2464,10 +2477,10 @@ public class DataLogicSales extends BeanFactoryDataSingle {
     public final TableDefinition getTableTaxes() {
         return new TableDefinition(s,
                 "taxes"
-                , new String[] {"ID", "NAME", "CATEGORY", "CUSTCATEGORY", "PARENTID", "RATE", "RATECASCADE", "RATEORDER"}
-                , new String[] {"ID", AppLocal.getIntString("label.name"), AppLocal.getIntString("label.taxcategory"), AppLocal.getIntString("label.custtaxcategory"), AppLocal.getIntString("label.taxparent"), AppLocal.getIntString("label.dutyrate"), AppLocal.getIntString("label.cascade"), AppLocal.getIntString("label.order")}
-                , new Datas[] {Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.DOUBLE, Datas.BOOLEAN, Datas.INT}
-                , new Formats[] {Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.PERCENT, Formats.BOOLEAN, Formats.INT}
+                , new String[] {"ID", "NAME", "CATEGORY", "CUSTCATEGORY", "PARENTID", "RATE", "RATECASCADE", "RATEORDER", "LEGALCODE", "DATESTART"}
+                , new String[] {"ID", AppLocal.getIntString("label.name"), AppLocal.getIntString("label.taxcategory"), AppLocal.getIntString("label.custtaxcategory"), AppLocal.getIntString("label.taxparent"), AppLocal.getIntString("label.dutyrate"), AppLocal.getIntString("label.cascade"), AppLocal.getIntString("label.order"), AppLocal.getIntString("label.LegalCode"), AppLocal.getIntString("label.date")}
+                , new Datas[] {Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.DOUBLE, Datas.BOOLEAN, Datas.INT, Datas.STRING, Datas.TIMESTAMP}
+                , new Formats[] {Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.PERCENT, Formats.BOOLEAN, Formats.INT, Formats.STRING, Formats.DATE}
                 , new int[] {0}
         );
     }

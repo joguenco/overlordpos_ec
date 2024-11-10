@@ -189,7 +189,7 @@ ReprintTicketInfo m_Ticket = null;
 //            readTicket(iTkt, iTt);
 // readTicket(m_sDialogTicket);
                     
-                    TicketInfo ticket = dlSales.loadTicket(iTt, iTkt);
+                    TicketInfo ticket = dlSales.loadTicket(iTt, iTkt, "");
 
                     if (ticket == null) {
                         JFrame frame = new JFrame();

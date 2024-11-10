@@ -928,7 +928,7 @@ public final class TicketInfo implements SerializableRead, Externalizable {
     }    
    
     public String printForcedAccounting() {
-        if (taxPayerInfo.getForcedAccounting().equals("SI")) {
+        if ("SI".equals(taxPayerInfo.getForcedAccounting())) {
             return "Obligado a llevar contabilidad: "
                     + taxPayerInfo.getForcedAccounting();
         }

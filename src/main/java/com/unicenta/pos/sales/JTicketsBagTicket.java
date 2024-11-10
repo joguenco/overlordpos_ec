@@ -195,7 +195,7 @@ public class JTicketsBagTicket extends JTicketsBag {
         return this;
     }
       
-    private void readTicket(int iTicketid, int iTickettype) {
+    private void readTicket(int iTicketid, int iTickettype, String serieNumber) {
         Integer findTicket=0;    
         try {
             findTicket = m_jTicketEditor.getValueInteger();
@@ -205,8 +205,8 @@ public class JTicketsBagTicket extends JTicketsBag {
         try {
    
             TicketInfo ticket = (iTicketid==-1) 
-                ? m_dlSales.loadTicket(iTickettype,  findTicket)
-                : m_dlSales.loadTicket(iTickettype, iTicketid) ;
+                ? m_dlSales.loadTicket(iTickettype, findTicket, serieNumber)
+                : m_dlSales.loadTicket(iTickettype, iTicketid, serieNumber) ;
 
             if (ticket == null) {
                 JFrame frame = new JFrame();
@@ -565,13 +565,13 @@ public class JTicketsBagTicket extends JTicketsBag {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         
-        readTicket(-1, jrbSales.isSelected() ? 0 : 1);
+        readTicket(-1, jrbSales.isSelected() ? 0 : 1, "");
         
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void m_jKeysActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jKeysActionPerformed
 
-        readTicket(-1, jrbSales.isSelected() ? 0 : 1);
+        readTicket(-1, jrbSales.isSelected() ? 0 : 1, "");
         
     }//GEN-LAST:event_m_jKeysActionPerformed
 
@@ -584,7 +584,8 @@ private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRS
             m_jTicketEditor.reset();
             m_jTicketEditor.activate();
         } else {
-            readTicket(selectedTicket.getTicketId(), selectedTicket.getTicketType());
+            readTicket(selectedTicket.getTicketId(), selectedTicket.getTicketType(), 
+                    selectedTicket.getSerieNumber());
         }
 }//GEN-LAST:event_jButton2ActionPerformed
     

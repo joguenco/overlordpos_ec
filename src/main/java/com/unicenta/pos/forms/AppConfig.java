@@ -252,11 +252,12 @@ public class AppConfig implements AppProperties {
     }
   }
 
-  public void setLastTicket(String lastTicketNumber, String lastTicketType) throws IOException {
+  public void setLastTicket(String lastTicketNumber, String lastTicketType, String lastTicketSerieNumber) throws IOException {
 
     pullLatestProperties();
     properties.setProperty("lastticket.number", lastTicketNumber);
     properties.setProperty("lastticket.type", lastTicketType);
+    properties.setProperty("lastticket.serieNumber", lastTicketSerieNumber);
 
     OutputStream out = new FileOutputStream(configfile);
     if (out != null) {

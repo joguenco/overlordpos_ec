@@ -21,6 +21,7 @@ package com.unicenta.pos.ticket;
 
 import com.unicenta.data.loader.IKeyed;
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  *
@@ -38,6 +39,9 @@ public class TaxInfo implements Serializable, IKeyed {
     private double rate;
     private boolean cascade;
     private Integer order;
+    
+    private String legalCode;
+    private Date dateStart;
     
     /** Creates new TaxInfo
      * @param id
@@ -60,7 +64,23 @@ public class TaxInfo implements Serializable, IKeyed {
         this.cascade = cascade;
         this.order = order;
     }
-    
+
+    public TaxInfo(String id, String name, String taxcategoryid, String taxcustcategoryid,
+            String parentid, double rate, boolean cascade, Integer order, String legalCode,
+            Date dateStart) {
+        this.id = id;
+        this.name = name;
+        this.taxcategoryid = taxcategoryid;
+        this.taxcustcategoryid = taxcustcategoryid;
+        this.parentid = parentid;
+
+        this.rate = rate;
+        this.cascade = cascade;
+        this.order = order;
+        this.legalCode = legalCode;
+        this.dateStart = dateStart;
+    }
+
     /**
      *
      * @return
@@ -205,7 +225,23 @@ public class TaxInfo implements Serializable, IKeyed {
     public void setOrder(Integer value) {
         order = value;
     }
-    
+
+    public String getLegalCode() {
+        return legalCode;
+    }
+
+    public void setLegalCode(String legalCode) {
+        this.legalCode = legalCode;
+    }
+
+    public Date getDateStart() {
+        return dateStart;
+    }
+
+    public void setDateStart(Date dateStart) {
+        this.dateStart = dateStart;
+    }
+
     @Override
     public String toString(){
         return name;

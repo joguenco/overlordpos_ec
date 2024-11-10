@@ -38,7 +38,9 @@ public class FindTicketsInfo implements SerializableRead {
     private String customer;
     private double total;
     private int ticketstatus;
-    
+    private String document;
+    private String serieNumber;
+
     public FindTicketsInfo() {
         
     }
@@ -58,6 +60,8 @@ public class FindTicketsInfo implements SerializableRead {
         customer = dr.getString(5);
         total = (dr.getObject(6) == null) ? 0.0 : dr.getDouble(6);
         ticketstatus = dr.getInt(7);
+        document = dr.getString(8);
+        serieNumber = dr.getString(9);
     }
     
     @Override
@@ -66,6 +70,7 @@ public class FindTicketsInfo implements SerializableRead {
         String sCustomer = (customer==null) ? "" : customer;
 
         String sHtml = "<tr><td width=\"75\">"+ "["+ ticketid +"]" +"</td>" +
+                "<td width=\"75\">" + "[" + document + "]" + "</td>" +
                 "<td width=\"75\">"+ Formats.TIMESTAMP.formatValue(date) +"</td>" +
                 "<td align=\"right\" width=\"100\">"+ Formats.CURRENCY.formatValue(total) +"</td>"+
                 "<td align=\"left\" width=\"100\">"+ sCustomer +"</td>" +
@@ -93,5 +98,8 @@ public class FindTicketsInfo implements SerializableRead {
     public int getTicketStatus() {
         return this.ticketstatus;
     }
-   
+
+    public String getSerieNumber() {
+        return serieNumber;
+    }
 }
