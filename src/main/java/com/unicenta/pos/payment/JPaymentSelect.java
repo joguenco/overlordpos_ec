@@ -809,7 +809,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         jPanel5.add(jlblPrinterStatus, java.awt.BorderLayout.CENTER);
 
         txtType.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-        txtType.setText("Tipo");
+        txtType.setText(bundle.getString("label.type")); // NOI18N
 
         txtPhone.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
 
@@ -826,7 +826,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         });
 
         lblIdentification.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-        lblIdentification.setText("Identificación");
+        lblIdentification.setText(bundle.getString("label.taxid")); // NOI18N
 
         txtIdentification.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
         txtIdentification.addFocusListener(new java.awt.event.FocusAdapter() {
@@ -841,7 +841,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         });
 
         lblName.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-        lblName.setText("Razón Social");
+        lblName.setText(bundle.getString("label.namem")); // NOI18N
 
         txtName.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
         txtName.setToolTipText("Apellido Nombre");
@@ -857,7 +857,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         });
 
         lblEmail.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-        lblEmail.setText("Email");
+        lblEmail.setText(bundle.getString("label.email")); // NOI18N
 
         txtEmail.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
         txtEmail.addActionListener(new java.awt.event.ActionListener() {
@@ -867,7 +867,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         });
 
         lblAddress.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-        lblAddress.setText("Dirección");
+        lblAddress.setText(bundle.getString("label.locationaddress")); // NOI18N
 
         txtAddress.setFont(new java.awt.Font("Arial", 0, 19)); // NOI18N
         txtAddress.addActionListener(new java.awt.event.ActionListener() {
@@ -877,7 +877,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
         });
 
         lblPhone.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
-        lblPhone.setText("Tel.");
+        lblPhone.setText(bundle.getString("label.phone")); // NOI18N
 
         org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -886,7 +886,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
             .add(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(lblName)
+                    .add(lblName, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(lblAddress)
                     .add(lblIdentification))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
@@ -901,7 +901,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
                     .add(lblPhone))
                 .add(4, 4, 4)
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, cbxIdentificationType, 0, 376, Short.MAX_VALUE)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, cbxIdentificationType, 0, 366, Short.MAX_VALUE)
                     .add(txtEmail)
                     .add(txtPhone))
                 .addContainerGap())
@@ -925,7 +925,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
                     .add(jPanel1Layout.createSequentialGroup()
                         .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                             .add(txtName, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                            .add(lblName)
+                            .add(lblName, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                             .add(lblEmail)
                             .add(txtEmail, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 39, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
