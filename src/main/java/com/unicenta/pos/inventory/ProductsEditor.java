@@ -113,6 +113,8 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
   private AppView m_App;
 
   protected DataLogicSystem dlSystem;
+  
+  private DataLogicInventory dlInventory;
 
 
   /**
@@ -127,7 +129,8 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     dlSales = (DataLogicSales) app.getBean("com.unicenta.pos.forms.DataLogicSales");
     m_dlSystem = (DataLogicSystem) app.getBean("com.unicenta.pos.forms.DataLogicSystem");
     m_dlSuppliers = (DataLogicSuppliers) app.getBean("com.unicenta.pos.suppliers.DataLogicSuppliers");
-
+    dlInventory = (DataLogicInventory) app.getBean("com.unicenta.pos.inventory.DataLogicInventory");
+    
     initComponents();
 
     loadimage = dlSales.getProductImage(); // JG 3 feb 16 speedup
@@ -264,7 +267,7 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     taxcatmodel.setSelectedKey(null);
     attmodel.setSelectedKey(null);
     m_jVerpatrib.setSelected(false);
-    m_UomModel.setSelectedKey(0);
+    m_UomModel.setSelectedFirst();
     m_jPriceBuy.setText("0");
     setPriceSell(null);
     m_SuppliersModel.setSelectedKey(0);
@@ -366,7 +369,7 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     attmodel.setSelectedKey(null);
     m_jVerpatrib.setSelected(false);
     taxcatmodel.setSelectedKey("001");
-    m_UomModel.setSelectedKey("0");
+    m_UomModel.setSelectedFirst();
     m_jPriceBuy.setText("0");
     setPriceSell(null);
 //        m_SuppliersModel.setSelectedKey(0);
@@ -400,7 +403,7 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     reportlock = false;
 
 // Tab General
-    m_jRef.setEnabled(true);
+    m_jRef.setEnabled(false);
     m_jCode.setEnabled(true);
     m_jCodetype.setEnabled(true);
     m_jName.setEnabled(true);
@@ -457,8 +460,23 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     Object[] myprod = new Object[32];
 
     myprod[0] = m_oId == null ? UUID.randomUUID().toString() : m_oId;
-    myprod[1] = m_jRef.getText();
-    myprod[2] = m_jCode.getText();
+    
+    // Call product sequence
+    if (m_jRef.getText().isEmpty()) {
+        myprod[1] = getSequence();
+    } else {
+        myprod[1] = m_jRef.getText();
+    }
+    
+    // Barcode is equal to sequence product if barcode is null   
+    String barcode = m_jCode.getText();
+    barcode = barcode.replaceAll("\\s", "");
+    if (barcode.equals("") || barcode.isEmpty()) {
+        myprod[2] = myprod[1];
+    } else {
+        myprod[2] = barcode;
+    }
+    
     myprod[3] = m_jCodetype.getSelectedItem();
     myprod[4] = m_jName.getText();
     myprod[5] = Formats.CURRENCY.parseValue(m_jPriceBuy.getText());
@@ -550,7 +568,7 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     reportlock = false;
 
 // Tab General
-    m_jRef.setEnabled(true);
+    m_jRef.setEnabled(false);
     m_jCode.setEnabled(true);
     m_jCodetype.setEnabled(true);
     m_jName.setEnabled(true);
@@ -1132,6 +1150,15 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
       return null;
     }
   }
+  
+  private String getSequence() {
+        try {
+            return (String) dlInventory.getProductSequence().find();
+        } catch (BasicException ex) {
+            log.error(ex.getMessage());
+            return "-1";
+        }
+    }
 
   /**
    * This method is called from within the constructor to
