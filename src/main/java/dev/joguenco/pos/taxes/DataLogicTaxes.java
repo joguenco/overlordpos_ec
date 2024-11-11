@@ -17,11 +17,17 @@
  */
 package dev.joguenco.pos.taxes;
 
+import com.unicenta.basic.BasicException;
+import com.unicenta.data.loader.DataParams;
 import com.unicenta.data.loader.DataRead;
 import com.unicenta.data.loader.PreparedSentence;
+import com.unicenta.data.loader.SerializerReadClass;
+import com.unicenta.data.loader.SerializerWriteParams;
 import com.unicenta.data.loader.SerializerWriteString;
 import com.unicenta.data.loader.Session;
 import com.unicenta.pos.forms.BeanFactoryDataSingle;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -50,5 +56,57 @@ public class DataLogicTaxes extends BeanFactoryDataSingle {
                     return taxInfo;
                 }
         );
+    }
+    
+    public List<Product> getProducts(Session s, String currentTax) {
+        try {
+            var sent = new PreparedSentence(
+                    s,
+                    "SELECT id, name, pricesell "
+                    + "from products "
+                    + "WHERE taxcat = ?",
+                    SerializerWriteString.INSTANCE,
+                    new SerializerReadClass(Product.class));
+
+            return sent.list(currentTax);
+
+        } catch (BasicException ex) {
+            System.out.println("BasicException " + ex.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    public final void updatePriceByTax(Session s, List<Product> products, Double newTax, Double currentTax) throws BasicException {
+
+        for (Product p : products) {
+            var newPrice = (p.getPriceSell() * ((currentTax) + 1)) / ((newTax) + 1);
+
+            var r = new PreparedSentence(s,
+                    "UPDATE products SET pricesell = ? WHERE id = ?",
+                    SerializerWriteParams.INSTANCE
+            );
+
+            r.exec(new DataParams() {
+                @Override
+                public void writeValues() throws BasicException {
+                    setDouble(1, newPrice);
+                    setString(2, p.getId());
+                }
+            });
+        }
+    }
+    
+    public final int updateProductByTax(Session s, String newTax, String currentTax) throws BasicException {
+
+        return new PreparedSentence(s,
+                "UPDATE products SET taxcat = ? WHERE taxcat = ?",
+                SerializerWriteParams.INSTANCE
+        ).exec(new DataParams() {
+            @Override
+            public void writeValues() throws BasicException {
+                setString(1, newTax);
+                setString(2, currentTax);
+            }
+        });
     }
 }
