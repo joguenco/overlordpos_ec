@@ -1322,6 +1322,22 @@ public class DataLogicSales extends BeanFactoryDataSingle {
                 , null
                 , (DataRead dr) -> new TaxCategoryInfo(dr.getString(1), dr.getString(2)));
     }
+    
+    /**
+     *
+     * @return
+     */
+    public final SentenceList getTaxCategoriesListForProducts() {
+        return new StaticSentence(s
+                , "select c.id, concat(c.name, ' - ', t.rate * 100, '%') as name "
+                + "from taxcategories c "
+                + "join taxes t "
+                + "on c.id = t.category "
+                + "where t.status = true "
+                + "order by t.rate"
+                , null
+                , (DataRead dr) -> new TaxCategoryInfo(dr.getString(1), dr.getString(2)));
+    }
 
     /**
      *

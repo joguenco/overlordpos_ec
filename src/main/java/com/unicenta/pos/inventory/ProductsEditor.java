@@ -140,7 +140,7 @@ public final class ProductsEditor extends javax.swing.JPanel implements EditorRe
     m_sentcat = dlSales.getCategoriesList();
     m_CategoryModel = new ComboBoxValModel();
 
-    taxcatsent = dlSales.getTaxCategoriesList();
+    taxcatsent = dlSales.getTaxCategoriesListForProducts();
     taxcatmodel = new ComboBoxValModel();
 
     attsent = dlSales.getAttributeSetList();
