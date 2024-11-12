@@ -2477,10 +2477,10 @@ public class DataLogicSales extends BeanFactoryDataSingle {
     public final TableDefinition getTableTaxes() {
         return new TableDefinition(s,
                 "taxes"
-                , new String[] {"ID", "NAME", "CATEGORY", "CUSTCATEGORY", "PARENTID", "RATE", "RATECASCADE", "RATEORDER", "LEGALCODE", "DATESTART"}
-                , new String[] {"ID", AppLocal.getIntString("label.name"), AppLocal.getIntString("label.taxcategory"), AppLocal.getIntString("label.custtaxcategory"), AppLocal.getIntString("label.taxparent"), AppLocal.getIntString("label.dutyrate"), AppLocal.getIntString("label.cascade"), AppLocal.getIntString("label.order"), AppLocal.getIntString("label.LegalCode"), AppLocal.getIntString("label.date")}
-                , new Datas[] {Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.DOUBLE, Datas.BOOLEAN, Datas.INT, Datas.STRING, Datas.TIMESTAMP}
-                , new Formats[] {Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.PERCENT, Formats.BOOLEAN, Formats.INT, Formats.STRING, Formats.DATE}
+                , new String[] {"ID", "NAME", "CATEGORY", "CUSTCATEGORY", "PARENTID", "RATE", "RATECASCADE", "RATEORDER", "LEGALCODE", "DATESTART", "STATUS"}
+                , new String[] {"ID", AppLocal.getIntString("label.name"), AppLocal.getIntString("label.taxcategory"), AppLocal.getIntString("label.custtaxcategory"), AppLocal.getIntString("label.taxparent"), AppLocal.getIntString("label.dutyrate"), AppLocal.getIntString("label.cascade"), AppLocal.getIntString("label.order"), AppLocal.getIntString("label.LegalCode"), AppLocal.getIntString("label.date"), AppLocal.getIntString("label.Status")}
+                , new Datas[] {Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, Datas.DOUBLE, Datas.BOOLEAN, Datas.INT, Datas.STRING, Datas.TIMESTAMP, Datas.BOOLEAN}
+                , new Formats[] {Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING, Formats.PERCENT, Formats.BOOLEAN, Formats.INT, Formats.STRING, Formats.DATE, Formats.BOOLEAN}
                 , new int[] {0}
         );
     }

@@ -537,6 +537,7 @@ CREATE TABLE `taxes` (
 	`rateorder` int(11) default NULL,
         `legalcode` varchar(6) default '0' NOT NULL,
         `datestart` datetime DEFAULT NULL,
+        `status` boolean DEFAULT true,
 	PRIMARY KEY  ( `id` ),
 	KEY `taxes_cat_fk` ( `category` ),
 	KEY `taxes_custcat_fk` ( `custcategory` ),
