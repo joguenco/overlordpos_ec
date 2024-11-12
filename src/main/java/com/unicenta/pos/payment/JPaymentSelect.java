@@ -141,6 +141,7 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
             jlblPrinterStatus.setText("Printer OFF");
         }
 
+        tabData.setTitleAt(0, AppLocal.getIntString("label.customer"));
     }
 
     public void setPrintSelected(boolean value) {
@@ -933,9 +934,11 @@ public abstract class JPaymentSelect extends javax.swing.JDialog
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        tabData.addTab("Cliente", jPanel1);
+        tabData.addTab("Customer", jPanel1);
 
         jPanel5.add(tabData, java.awt.BorderLayout.PAGE_START);
+        tabData.getAccessibleContext().setAccessibleName("");
+        tabData.getAccessibleContext().setAccessibleDescription("");
 
         getContentPane().add(jPanel5, java.awt.BorderLayout.SOUTH);
 
