@@ -529,6 +529,7 @@ CREATE TABLE `suppliers` (
 	`curdate` datetime default NULL,
 	`curdebt` double default '0',
 	`vatid` varchar(255) default NULL,
+        `taxid_type` varchar(90) not null default 'CF',
 	PRIMARY KEY  ( `id` ),
 	KEY `suppliers_name_inx` ( `name` ),
 	UNIQUE INDEX `suppliers_skey_inx` ( `searchkey` )
@@ -1062,7 +1063,7 @@ INSERT INTO products_cat(product) VALUES ('5');
 INSERT INTO locations(id, name, address) VALUES ('0','Location 1','Local');
 
 -- ADD SUPPLIERS
-INSERT INTO suppliers(id, searchkey, name) VALUES ('0','uniCenta','uniCenta');
+INSERT INTO suppliers(id, searchkey, taxid, taxid_type, name) VALUES ('9999999999999','9999999999999', '9999999999999', 'CF', 'Otros Proveedores');
 
 -- ADD UOM
 INSERT INTO uom(id, name) VALUES ('u','Unidad');

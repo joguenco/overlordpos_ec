@@ -22,6 +22,7 @@ package com.unicenta.pos.suppliers;
 import com.unicenta.basic.BasicException;
 import com.unicenta.data.loader.*;
 import com.unicenta.format.Formats;
+import com.unicenta.pos.customers.IdentificationTypeInfo;
 import com.unicenta.pos.forms.AppLocal;
 import com.unicenta.pos.forms.BeanFactoryDataSingle;
 import java.util.List;
@@ -76,7 +77,8 @@ public class DataLogicSuppliers extends BeanFactoryDataSingle {
                 "VISIBLE", 
                 "CURDATE", 
                 "CURDEBT",
-                "VATID"  }
+                "VATID",
+                "TAXID_TYPE"}
             , new String[] { 
                 "ID", 
                 AppLocal.getIntString("label.searchkey"),
@@ -104,21 +106,22 @@ public class DataLogicSuppliers extends BeanFactoryDataSingle {
                 AppLocal.getIntString("label.curdate"),
 
                 AppLocal.getIntString("label.curdebt"),
-                AppLocal.getIntString("label.suppliervatid") }
+                AppLocal.getIntString("label.suppliervatid"),
+                "TAXID_TYPE"}
             , new Datas[] { 
                 Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING, 
                 Datas.DOUBLE, Datas.STRING, Datas.STRING, Datas.STRING, 
                 Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING,
                 Datas.STRING, Datas.STRING, Datas.STRING, Datas.STRING,
                 Datas.STRING, Datas.STRING, Datas.BOOLEAN, Datas.TIMESTAMP,                 
-                Datas.DOUBLE, Datas.STRING }
+                Datas.DOUBLE, Datas.STRING, Datas.STRING }
             , new Formats[] {
                 Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING,
                 Formats.CURRENCY, Formats.STRING, Formats.STRING, Formats.STRING,
                 Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING,                
                 Formats.STRING, Formats.STRING, Formats.STRING, Formats.STRING,
                 Formats.STRING, Formats.STRING, Formats.BOOLEAN, Formats.TIMESTAMP,
-                Formats.CURRENCY, Formats.STRING }
+                Formats.CURRENCY, Formats.STRING, Formats.STRING }
             , new int[] {0}
         );   
     }
@@ -239,4 +242,25 @@ public class DataLogicSuppliers extends BeanFactoryDataSingle {
                     SerializerWriteString.INSTANCE,                
                         SupplierTransaction.getSerializerRead()).list(sId);
     }    
+    
+    public SentenceList getIdentificationTypeList() {
+        return new StaticSentence(s,
+                new QBFBuilder("select code, name from identification_type "
+                        + "where status = true "
+                        + "and code not in ('P', 'IE') "
+                        + "order by name",
+                        new String[]{"code", "name"}),
+                new SerializerWriteBasic(new Datas[]{
+            Datas.OBJECT, Datas.STRING,
+            Datas.OBJECT, Datas.STRING
+        }),
+                (DataRead dr) -> {
+                    var i = new IdentificationTypeInfo(
+                            dr.getString(1),
+                            dr.getString(2)
+                    );
+
+                    return i;
+                });
+    }
 }
