@@ -2973,43 +2973,48 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
         m_jTicketId.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         m_jTicketId.setVerticalAlignment(javax.swing.SwingConstants.TOP);
         m_jTicketId.setOpaque(true);
-        m_jTicketId.setPreferredSize(new java.awt.Dimension(270, 40));
+        m_jTicketId.setPreferredSize(new java.awt.Dimension(270, 15));
         m_jTicketId.setRequestFocusEnabled(false);
         m_jTicketId.setVerticalTextPosition(javax.swing.SwingConstants.TOP);
         jPanel4.add(m_jTicketId, java.awt.BorderLayout.CENTER);
 
         m_jPanTotals.setBorder(javax.swing.BorderFactory.createEtchedBorder());
-        m_jPanTotals.setPreferredSize(new java.awt.Dimension(375, 60));
+        m_jPanTotals.setPreferredSize(new java.awt.Dimension(375, 45));
         m_jPanTotals.setLayout(new java.awt.GridLayout(2, 3, 4, 0));
 
-        lblTaxIva.setFont(new java.awt.Font("Noto Sans", 1, 15)); // NOI18N
+        lblTaxIva.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
         lblTaxIva.setForeground(new java.awt.Color(0, 102, 255));
         lblTaxIva.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        lblTaxIva.setText("Sub. IVA%");
+        lblTaxIva.setText(bundle.getString("label.subtotalTaxNo0")); // NOI18N
+        lblTaxIva.setPreferredSize(new java.awt.Dimension(60, 15));
         m_jPanTotals.add(lblTaxIva);
 
-        lblSubtotalTax0.setFont(new java.awt.Font("Noto Sans", 1, 15)); // NOI18N
+        lblSubtotalTax0.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
         lblSubtotalTax0.setForeground(new java.awt.Color(0, 102, 255));
         lblSubtotalTax0.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        lblSubtotalTax0.setText("Sub.  0%");
+        lblSubtotalTax0.setText(bundle.getString("label.subtotalTax0")); // NOI18N
+        lblSubtotalTax0.setPreferredSize(new java.awt.Dimension(60, 15));
         m_jPanTotals.add(lblSubtotalTax0);
 
         m_jLblTotalEuros3.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
         m_jLblTotalEuros3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         m_jLblTotalEuros3.setLabelFor(m_jSubtotalEuros);
         m_jLblTotalEuros3.setText(AppLocal.getIntString("label.subtotalcash")); // NOI18N
+        m_jLblTotalEuros3.setPreferredSize(new java.awt.Dimension(58, 15));
         m_jPanTotals.add(m_jLblTotalEuros3);
 
         m_jLblTotalEuros2.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
         m_jLblTotalEuros2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         m_jLblTotalEuros2.setLabelFor(m_jSubtotalEuros);
         m_jLblTotalEuros2.setText(AppLocal.getIntString("label.taxcash")); // NOI18N
+        m_jLblTotalEuros2.setPreferredSize(new java.awt.Dimension(25, 15));
         m_jPanTotals.add(m_jLblTotalEuros2);
 
         m_jLblTotalEuros1.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
         m_jLblTotalEuros1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         m_jLblTotalEuros1.setLabelFor(m_jTotalEuros);
         m_jLblTotalEuros1.setText(AppLocal.getIntString("label.totalcash")); // NOI18N
+        m_jLblTotalEuros1.setPreferredSize(new java.awt.Dimension(35, 15));
         m_jPanTotals.add(m_jLblTotalEuros1);
 
         m_jSubtotalIVA.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
@@ -3071,7 +3076,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
         m_jTotalEuros.setRequestFocusEnabled(false);
         m_jPanTotals.add(m_jTotalEuros);
 
-        jPanel4.add(m_jPanTotals, java.awt.BorderLayout.LINE_END);
+        jPanel4.add(m_jPanTotals, java.awt.BorderLayout.SOUTH);
 
         m_jPanelCentral.add(jPanel4, java.awt.BorderLayout.SOUTH);
 
