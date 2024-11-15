@@ -262,35 +262,36 @@ public class EstablishmentEditor extends JPanel implements EditorRecord {
 
         lblEstablishment.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         lblEstablishment.setLabelFor(txtId);
-        lblEstablishment.setText("Establecimiento");
+        java.util.ResourceBundle bundle = java.util.ResourceBundle.getBundle("pos_messages"); // NOI18N
+        lblEstablishment.setText(bundle.getString("label.establishment")); // NOI18N
         lblEstablishment.setToolTipText("");
 
         lblComercialName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblComercialName.setLabelFor(lblComercialName);
-        lblComercialName.setText("Nombre Comercial");
+        lblComercialName.setLabelFor(txtComercialName);
+        lblComercialName.setText(bundle.getString("label.locationname")); // NOI18N
 
         lblCity.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         lblCity.setLabelFor(txtCity);
-        lblCity.setText("Ciudad");
+        lblCity.setText(bundle.getString("label.city")); // NOI18N
 
         lblAddress.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         lblAddress.setLabelFor(txtAddress);
         lblAddress.setText("Dirección");
 
         lblPhone.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblPhone.setLabelFor(txtAddress);
-        lblPhone.setText("Teléfono");
+        lblPhone.setLabelFor(txtPhone);
+        lblPhone.setText(bundle.getString("label.phone")); // NOI18N
 
         lblEmail.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblEmail.setLabelFor(txtAddress);
-        lblEmail.setText("Email");
+        lblEmail.setLabelFor(txtEmail);
+        lblEmail.setText(bundle.getString("label.email")); // NOI18N
 
         lblTipo.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblTipo.setText("Tipo");
+        lblTipo.setText(bundle.getString("label.type")); // NOI18N
 
         lblStatus.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         lblStatus.setLabelFor(chkStatus);
-        lblStatus.setText("Estado");
+        lblStatus.setText(bundle.getString("label.Status")); // NOI18N
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -320,7 +321,7 @@ public class EstablishmentEditor extends JPanel implements EditorRecord {
                         .addComponent(radMain)
                         .addGap(18, 18, 18)
                         .addComponent(radBranchOffice)))
-                .addContainerGap(178, Short.MAX_VALUE))
+                .addContainerGap(208, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)

@@ -149,10 +149,11 @@ public class Taxpayer extends JPanel implements JPanelView, BeanFactoryApp {
         txtIdentification.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 
         lblIdentification.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblIdentification.setText("Identificación");
+        java.util.ResourceBundle bundle = java.util.ResourceBundle.getBundle("pos_messages"); // NOI18N
+        lblIdentification.setText(bundle.getString("label.taxid")); // NOI18N
 
         lblLegalName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblLegalName.setText("Razón Social");
+        lblLegalName.setText(bundle.getString("label.namem")); // NOI18N
 
         txtLegalName.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 
@@ -168,7 +169,7 @@ public class Taxpayer extends JPanel implements JPanelView, BeanFactoryApp {
                 .addGroup(jPanelInformationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanelInformationLayout.createSequentialGroup()
                         .addGap(39, 39, 39)
-                        .addComponent(lblLegalName))
+                        .addComponent(lblLegalName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanelInformationLayout.createSequentialGroup()
                         .addGap(37, 37, 37)
                         .addComponent(txtLegalName, javax.swing.GroupLayout.PREFERRED_SIZE, 360, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -180,7 +181,7 @@ public class Taxpayer extends JPanel implements JPanelView, BeanFactoryApp {
                 .addContainerGap()
                 .addGroup(jPanelInformationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(lblIdentification)
-                    .addComponent(lblLegalName))
+                    .addComponent(lblLegalName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanelInformationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtIdentification, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -191,10 +192,10 @@ public class Taxpayer extends JPanel implements JPanelView, BeanFactoryApp {
         jPanelData.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
         lblForcedAccounting.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblForcedAccounting.setText("Obligado Contabilidad");
+        lblForcedAccounting.setText(bundle.getString("label.forcedAccounting")); // NOI18N
 
         chkForcedAccounting.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        chkForcedAccounting.setText("Si / No");
+        chkForcedAccounting.setText(bundle.getString("label.yesNo")); // NOI18N
         chkForcedAccounting.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 chkForcedAccountingStateChanged(evt);
@@ -202,17 +203,17 @@ public class Taxpayer extends JPanel implements JPanelView, BeanFactoryApp {
         });
 
         lblSpecialTaxPayer.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblSpecialTaxPayer.setText("Contribuyente Especial");
+        lblSpecialTaxPayer.setText(bundle.getString("label.specialTaxpayer")); // NOI18N
 
         txtRetentionAgent.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 
         lblRetentionAgent.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblRetentionAgent.setText("Agente de Retención");
+        lblRetentionAgent.setText(bundle.getString("label.retentionAgent")); // NOI18N
 
         txtSpecialTaxPayer.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 
         lblOther.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblOther.setText("Otro");
+        lblOther.setText(bundle.getString("label.other")); // NOI18N
 
         txtOther.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
 

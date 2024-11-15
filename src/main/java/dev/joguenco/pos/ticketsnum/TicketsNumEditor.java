@@ -236,19 +236,20 @@ public class TicketsNumEditor extends JPanel implements EditorRecord {
         });
 
         lblCode.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblCode.setText("Código");
+        java.util.ResourceBundle bundle = java.util.ResourceBundle.getBundle("pos_messages"); // NOI18N
+        lblCode.setText(bundle.getString("label.catid")); // NOI18N
 
         lblId.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblId.setText("Secuencial");
+        lblId.setText(bundle.getString("label.sequence")); // NOI18N
 
         lblSerie.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblSerie.setText("Serie");
+        lblSerie.setText(bundle.getString("label.serial")); // NOI18N
 
         lblPriority.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblPriority.setText("Prioridad");
+        lblPriority.setText(bundle.getString("label.priority")); // NOI18N
 
         lblStatus.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
-        lblStatus.setText("Estado");
+        lblStatus.setText(bundle.getString("label.Status")); // NOI18N
 
         lblSerieId.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
         lblSerieId.setText("...");
@@ -287,7 +288,7 @@ public class TicketsNumEditor extends JPanel implements EditorRecord {
                     .addComponent(txtSerie, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
                     .addComponent(txtId, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
                     .addComponent(cbxCode, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(231, Short.MAX_VALUE))
+                .addContainerGap(236, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)

@@ -171,14 +171,16 @@ public class Holiday extends JPanel implements JPanelView, BeanFactoryApp {
 
         year_month.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
-        jLabel1.setText("Año:");
+        java.util.ResourceBundle bundle = java.util.ResourceBundle.getBundle("pos_messages"); // NOI18N
+        jLabel1.setText(bundle.getString("label.year")); // NOI18N
 
         txtYear.setMinimumSize(new java.awt.Dimension(120, 45));
-        txtYear.setPreferredSize(new java.awt.Dimension(120, 45));
+        txtYear.setPreferredSize(new java.awt.Dimension(120, 23));
 
-        jLabel2.setText("Mes:");
+        jLabel2.setText(bundle.getString("label.month")); // NOI18N
 
-        cmdSearch.setText("Buscar");
+        cmdSearch.setText(bundle.getString("label.search")); // NOI18N
+        cmdSearch.setPreferredSize(new java.awt.Dimension(90, 30));
         cmdSearch.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmdSearchActionPerformed(evt);
@@ -199,7 +201,7 @@ public class Holiday extends JPanel implements JPanelView, BeanFactoryApp {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(lstMonth, javax.swing.GroupLayout.PREFERRED_SIZE, 279, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
-                .addComponent(cmdSearch)
+                .addComponent(cmdSearch, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         year_monthLayout.setVerticalGroup(
@@ -211,7 +213,7 @@ public class Holiday extends JPanel implements JPanelView, BeanFactoryApp {
                     .addComponent(lstMonth, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
                     .addComponent(jLabel2)
-                    .addComponent(cmdSearch))
+                    .addComponent(cmdSearch, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(29, Short.MAX_VALUE))
         );
 
@@ -236,14 +238,16 @@ public class Holiday extends JPanel implements JPanelView, BeanFactoryApp {
         });
         jScrollPane1.setViewportView(tableHoliday);
 
-        cmdAdd.setText("Añadir");
+        cmdAdd.setText(bundle.getString("button.newticket")); // NOI18N
+        cmdAdd.setPreferredSize(new java.awt.Dimension(72, 30));
         cmdAdd.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmdAddActionPerformed(evt);
             }
         });
 
-        cmdDelete.setText("Borrar");
+        cmdDelete.setText(bundle.getString("tooltip.delete")); // NOI18N
+        cmdDelete.setPreferredSize(new java.awt.Dimension(72, 30));
         cmdDelete.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmdDeleteActionPerformed(evt);
@@ -256,11 +260,11 @@ public class Holiday extends JPanel implements JPanelView, BeanFactoryApp {
             holidaysLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(holidaysLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 694, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(holidaysLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cmdAdd)
-                    .addComponent(cmdDelete))
+                .addGroup(holidaysLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(cmdAdd, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(cmdDelete, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         holidaysLayout.setVerticalGroup(
@@ -270,9 +274,9 @@ public class Holiday extends JPanel implements JPanelView, BeanFactoryApp {
                 .addGroup(holidaysLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 386, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(holidaysLayout.createSequentialGroup()
-                        .addComponent(cmdAdd)
-                        .addGap(18, 18, 18)
-                        .addComponent(cmdDelete)))
+                        .addComponent(cmdAdd, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(cmdDelete, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
