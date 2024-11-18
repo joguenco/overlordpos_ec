@@ -1007,6 +1007,9 @@ INSERT INTO resources(id, name, restype, content) VALUES('92', 'Electronic.Envir
 INSERT INTO resources(id, name, restype, content) VALUES('93', 'Tax.Holidays', 0, $FILE{/com/unicenta/pos/templates/Tax.Holidays.txt});
 INSERT INTO resources(id, name, restype, content) VALUES('94', 'Tax.Normal.Days', 0, $FILE{/com/unicenta/pos/templates/Tax.Normal.Days.txt});
 
+-- Subscription Manager URL
+INSERT INTO resources(id, name, restype, content) VALUES('108', 'Subscription.txt', 0, $FILE{/com/unicenta/pos/templates/Subscription.txt});
+
 -- ADD CATEGORIES
 INSERT INTO categories(id, name) VALUES ('000', 'Category Standard');
 INSERT INTO categories(id, name) VALUES ('001', 'Category Ecuador');
@@ -1418,3 +1421,9 @@ join `roles` `r` on
     (`u`.`role` = `r`.`id`))
 where
     `u`.`visible` = 1;
+
+CREATE TABLE `subscriptions` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(300) NOT NULL,
+  `url` VARCHAR(900) NOT NULL,
+  PRIMARY KEY (`id`));
