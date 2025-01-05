@@ -1338,7 +1338,7 @@ CREATE VIEW `v_ele_taxes_detail` as SELECT
         JOIN `taxes` `tx` ON ((`tx`.`CATEGORY` = `tl`.`TAXID`)))
         JOIN `products` `p` ON ((`p`.`ID` = `tl`.`PRODUCT`)));
 
-CREATE VIEW v_ele_informations as WITH informations AS 
+CREATE VIEW v_ele_information as WITH information AS 
    (SELECT `TAXID` AS `identification`,
 	'Email' AS `name`,
 	`EMAIL` AS `value`
@@ -1398,7 +1398,7 @@ CREATE  VIEW `v_ele_report_invoices` AS select `j`.`id` AS `id`,
     (select
         `i`.`value`
     from
-        `v_ele_informations` `i`
+        `v_ele_information` `i`
     where
         `i`.`name` = 'Email'
         and `i`.`identification` = `j`.`identification`
