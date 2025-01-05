@@ -1368,7 +1368,7 @@ WHERE
 SELECT ROWNUM() AS `id`,
 	`identification`,
 	`name`,
-	`value` FROM informations;
+	`value` FROM information;
 
 CREATE  VIEW `v_ele_payments` AS SELECT ROWNUM() `id`,
         `t`.`code` AS `code`,
